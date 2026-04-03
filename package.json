@@ -22,7 +22,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "zod": "^3.23.0"
+    "@opencode-ai/sdk": "^1.3.13"
   },
   "peerDependencies": {
     "@opencode-ai/plugin": ">=1.0.0"
@@ -46,15 +46,17 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_USERNAME/chris-risk-workbench.git"
+    "url": "https://github.com/Ace-Chris/chris-risk-workbench.git"
   },
-  "homepage": "https://github.com/YOUR_USERNAME/chris-risk-workbench#readme",
+  "homepage": "https://github.com/Ace-Chris/chris-risk-workbench#readme",
   "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/chris-risk-workbench/issues"
+    "url": "https://github.com/Ace-Chris/chris-risk-workbench/issues"
   },
-  "author": "YOUR_USERNAME",
+  "author": "Ace-Chris",
   "devDependencies": {
+    "@opencode-ai/plugin": "^1.3.13",
     "@types/node": "^25.5.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "zod": "^4.1.8"
   }
 }
