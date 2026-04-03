@@ -1,0 +1,637 @@
+# L3 数据形态框架 - 截面统计（Cross-Sectional Statistics）
+
+## 📌 框架定位
+
+**本质：** 从统计分布角度挖掘特征，捕捉集中趋势、离散程度、分布形态
+
+**适用场景：**
+- 用户画像（描述用户特征分布）
+- 异常检测（识别离群值）
+- 风险评估（尾部风险）
+- 用户分层（分位数分段）
+- 特征标准化（归一化）
+
+**核心思想：**
+> "不只看平均值，还要看分布：
+> Central Tendency（集中趋势）- 典型值是多少？
+> Dispersion（离散程度）- 差异大吗？
+> Shape（分布形态）- 对称吗？有尾部吗？
+> Position（相对位置）- 在群体中的排名？"
+
+---
+
+## 🎯 截面统计四维度详解
+
+### 维度1：Central Tendency（集中趋势）
+
+**核心问题：** 典型值是多少？代表性水平？
+
+**业务逻辑：**
+```
+集中趋势体现典型特征：
+- 均值：平均水平（受极值影响）
+- 中位数：中间水平（抗极值）
+- 众数：最常见值
+- 截尾均值：去除极值后的均值
+```
+
+---
+
+#### 1.1 基础集中趋势特征
+
+**特征设计：**
+
+```python
+central_tendency = {
+    # 均值类
+    'mean': '算术平均数',
+    'weighted_mean': '加权平均数',
+    'geometric_mean': '几何平均数（增长率）',
+    'harmonic_mean': '调和平均数（速度/比率）',
+
+    # 中位数类
+    'median': '中位数（50分位数）',
+
+    # 众数
+    'mode': '众数（最常见值）',
+    'mode_frequency': '众数频率',
+
+    # 截尾均值
+    'trimmed_mean_5pct': '5%截尾均值（去除头尾5%）',
+    'trimmed_mean_10pct': '10%截尾均值',
+
+    # Winsorized均值
+    'winsorized_mean': 'Winsorized均值（极值替换为分位数）'
+}
+```
+
+**计算示例：**
+```python
+from scipy import stats
+import numpy as np
+
+def calculate_central_tendency(data):
+    """计算集中趋势特征"""
+    return {
+        'mean': np.mean(data),
+        'median': np.median(data),
+        'mode': stats.mode(data)[0][0],
+        'geometric_mean': stats.gmean(data) if all(x > 0 for x in data) else None,
+        'harmonic_mean': stats.hmean(data) if all(x > 0 for x in data) else None,
+        'trimmed_mean_5pct': stats.trim_mean(data, 0.05),
+        'trimmed_mean_10pct': stats.trim_mean(data, 0.10)
+    }
+```
+
+---
+
+#### 1.2 均值与中位数对比特征
+
+**特征设计：**
+
+```python
+mean_median_comparison = {
+    # 差异
+    'mean_median_diff': '均值-中位数',
+    'mean_median_ratio': '均值/中位数',
+
+    # 偏斜检测
+    'mean_gt_median': '均值>中位数标志（右偏）',
+    'mean_lt_median': '均值<中位数标志（左偏）',
+    'mean_median_gap': '|(均值-中位数)/中位数|（偏斜程度）',
+
+    # 业务解读
+    'high_value_presence': '高值存在（均值>中位数 = 少数高值拉高均值）',
+    'low_value_presence': '低值存在（均值<中位数 = 少数低值拉低均值）'
+}
+```
+
+**业务应用：**
+```
+均值 vs 中位数：
+- 均值 ≈ 中位数：对称分布，典型用户
+- 均值 > 中位数：少数高值用户（鲸鱼用户）
+- 均值 < 中位数：少数低值用户（异常或欺诈）
+
+示例：用户消费金额
+- 均值1000元，中位数500元 → 存在少数高消费用户
+- 均值500元，中位数500元 → 消费分布均匀
+```
+
+---
+
+### 维度2：Dispersion（离散程度）
+
+**核心问题：** 差异大吗？波动大吗？
+
+**业务逻辑：**
+```
+离散程度体现差异化：
+- 低离散：用户同质化强（稳定/可预测）
+- 高离散：用户异质化强（多样/难预测）
+```
+
+---
+
+#### 2.1 绝对离散特征
+
+**特征设计：**
+
+```python
+absolute_dispersion = {
+    # 极差
+    'range': '极差 = max - min',
+    'max_value': '最大值',
+    'min_value': '最小值',
+
+    # 四分位距
+    'iqr': '四分位距 = Q3 - Q1',
+    'q1': '第一四分位数（25%）',
+    'q3': '第三四分位数（75%）',
+
+    # 标准差/方差
+    'std': '标准差',
+    'variance': '方差',
+
+    # 平均绝对偏差
+    'mad': '平均绝对偏差 = mean(|x - mean|)',
+    'median_absolute_deviation': '中位数绝对偏差'
+}
+```
+
+---
+
+#### 2.2 相对离散特征
+
+**特征设计：**
+
+```python
+relative_dispersion = {
+    # 变异系数
+    'cv': '变异系数 = std / mean',
+
+    # 四分位离散系数
+    'quartile_dispersion_coefficient': '四分位离散系数 = (Q3-Q1)/(Q3+Q1)',
+
+    # 相对极差
+    'relative_range': '相对极差 = range / mean',
+
+    # 离散程度分段
+    'low_dispersion_flag': '低离散标志（CV<0.3）',
+    'medium_dispersion_flag': '中离散标志（0.3<=CV<0.7）',
+    'high_dispersion_flag': '高离散标志（CV>=0.7）'
+}
+```
+
+**计算示例：**
+```python
+def calculate_dispersion(data):
+    """计算离散程度特征"""
+    mean = np.mean(data)
+    std = np.std(data)
+    q1, q3 = np.percentile(data, [25, 75])
+
+    cv = std / mean if mean != 0 else 0
+
+    return {
+        'range': np.max(data) - np.min(data),
+        'iqr': q3 - q1,
+        'std': std,
+        'variance': np.var(data),
+        'mad': np.mean(np.abs(data - mean)),
+        'cv': cv,
+        'quartile_dispersion_coefficient': (q3 - q1) / (q3 + q1) if (q3 + q1) != 0 else 0,
+        'high_dispersion_flag': (cv >= 0.7)
+    }
+```
+
+---
+
+### 维度3：Shape（分布形态）
+
+**核心问题：** 分布是什么形状？对称吗？有尾部吗？
+
+**业务逻辑：**
+```
+分布形态体现用户结构：
+- 正态分布：大部分用户集中在中间
+- 右偏分布：少数高值用户（长尾）
+- 左偏分布：少数低值用户
+- 双峰分布：用户分化（两个群体）
+```
+
+---
+
+#### 3.1 偏度特征（Skewness）
+
+**特征设计：**
+
+```python
+skewness_features = {
+    # 偏度
+    'skewness': '偏度系数',
+
+    # 偏度方向
+    'right_skewed': '右偏标志（偏度>0.5）',
+    'left_skewed': '左偏标志（偏度<-0.5）',
+    'symmetric': '对称标志（|偏度|<0.5）',
+
+    # 偏度程度
+    'moderate_skewness': '中度偏斜（0.5<|偏度|<1）',
+    'high_skewness': '高度偏斜（|偏度|>1）',
+
+    # 业务解读
+    'long_tail_right': '右侧长尾（少数高值）',
+    'long_tail_left': '左侧长尾（少数低值）'
+}
+```
+
+**业务应用：**
+```
+偏度解读：
+- 偏度 = 0：对称分布（正态）
+- 偏度 > 0：右偏（少数高值用户）
+  → 示例：消费金额右偏 = 存在鲸鱼用户
+- 偏度 < 0：左偏（少数低值用户）
+  → 示例：信用评分左偏 = 存在高风险用户
+```
+
+---
+
+#### 3.2 峰度特征（Kurtosis）
+
+**特征设计：**
+
+```python
+kurtosis_features = {
+    # 峰度
+    'kurtosis': '峰度系数',
+    'excess_kurtosis': '超额峰度 = 峰度 - 3',
+
+    # 峰度类型
+    'leptokurtic': '尖峰标志（峰度>3，尾部厚）',
+    'platykurtic': '平峰标志（峰度<3，尾部薄）',
+    'mesokurtic': '正态峰标志（峰度≈3）',
+
+    # 业务解读
+    'fat_tail': '肥尾标志（极值多）',
+    'thin_tail': '瘦尾标志（极值少）',
+    'extreme_value_presence': '极端值存在（峰度>5）'
+}
+```
+
+**业务应用：**
+```
+峰度解读：
+- 峰度 = 3：正态分布
+- 峰度 > 3：尖峰厚尾（极值多）
+  → 风险：黑天鹅事件多
+  → 示例：交易金额峰度高 = 大额交易多（欺诈风险？）
+- 峰度 < 3：平峰薄尾（极值少）
+  → 用户行为均匀
+```
+
+**计算示例：**
+```python
+from scipy.stats import skew, kurtosis
+
+def calculate_shape_features(data):
+    """计算分布形态特征"""
+    skewness = skew(data)
+    kurt = kurtosis(data, fisher=False)  # Pearson定义（正态=3）
+
+    return {
+        'skewness': skewness,
+        'right_skewed': (skewness > 0.5),
+        'left_skewed': (skewness < -0.5),
+        'kurtosis': kurt,
+        'excess_kurtosis': kurt - 3,
+        'leptokurtic': (kurt > 3),
+        'platykurtic': (kurt < 3),
+        'fat_tail': (kurt > 3),
+        'extreme_value_presence': (kurt > 5)
+    }
+```
+
+---
+
+#### 3.3 分布类型检测
+
+**特征设计：**
+
+```python
+distribution_detection = {
+    # 正态性检验
+    'shapiro_wilk_statistic': 'Shapiro-Wilk统计量',
+    'shapiro_wilk_pvalue': 'Shapiro-Wilk p值',
+    'is_normal': '正态分布标志（p>0.05）',
+
+    # Kolmogorov-Smirnov检验
+    'ks_statistic': 'KS统计量',
+    'ks_pvalue': 'KS p值',
+
+    # 经验分布
+    'bimodal': '双峰分布标志',
+    'multimodal': '多峰分布标志',
+    'uniform_like': '均匀分布标志',
+
+    # 业务分布
+    'power_law': '幂律分布标志（长尾）',
+    'exponential': '指数分布标志'
+}
+```
+
+---
+
+### 维度4：Position（相对位置）
+
+**核心问题：** 在群体中的排名？相对水平？
+
+**业务逻辑：**
+```
+相对位置体现用户分层：
+- 高分位用户：头部用户
+- 中分位用户：腰部用户
+- 低分位用户：尾部用户
+```
+
+---
+
+#### 4.1 分位数特征（Percentile）
+
+**特征设计：**
+
+```python
+percentile_features = {
+    # 常用分位数
+    'p5': '5分位数',
+    'p10': '10分位数',
+    'p25': '25分位数（Q1）',
+    'p50': '50分位数（中位数）',
+    'p75': '75分位数（Q3）',
+    'p90': '90分位数',
+    'p95': '95分位数',
+    'p99': '99分位数',
+
+    # 分位数间距
+    'p90_p10_ratio': 'P90/P10（90-10差距）',
+    'p75_p25_ratio': 'P75/P25（四分位差距）',
+
+    # 头部集中度
+    'top1_pct_value': 'Top 1%的值',
+    'top5_pct_value': 'Top 5%的值',
+    'top10_pct_value': 'Top 10%的值',
+
+    # 尾部值
+    'bottom1_pct_value': 'Bottom 1%的值',
+    'bottom5_pct_value': 'Bottom 5%的值'
+}
+```
+
+---
+
+#### 4.2 用户分位特征（User Percentile Rank）
+
+**特征设计：**
+
+```python
+user_position = {
+    # 个体分位
+    'user_percentile': '用户分位数排名（0-100）',
+    'user_percentile_bin': '用户分位数分段',
+
+    # 分段标签
+    'is_top_10pct': '是否Top 10%',
+    'is_top_25pct': '是否Top 25%',
+    'is_bottom_10pct': '是否Bottom 10%',
+    'is_bottom_25pct': '是否Bottom 25%',
+
+    # 相对位置
+    'above_median': '是否高于中位数',
+    'above_mean': '是否高于均值',
+    'distance_to_median': '距离中位数的距离',
+    'distance_to_mean': '距离均值的距离',
+
+    # 标准化位置
+    'z_score': 'Z分数 = (x - mean) / std',
+    'modified_z_score': '修正Z分数（基于MAD）',
+
+    # 分位数跨越
+    'percentile_change': '分位数变化（时间对比）',
+    'upward_mobility': '向上流动（分位数提升）',
+    'downward_mobility': '向下流动（分位数下降）'
+}
+```
+
+**计算示例：**
+```python
+from scipy.stats import percentileofscore
+
+def calculate_user_position(user_value, population):
+    """计算用户相对位置特征"""
+    mean = np.mean(population)
+    median = np.median(population)
+    std = np.std(population)
+
+    # 分位数排名
+    percentile = percentileofscore(population, user_value)
+
+    # Z分数
+    z_score = (user_value - mean) / std if std != 0 else 0
+
+    return {
+        'user_percentile': percentile,
+        'is_top_10pct': (percentile >= 90),
+        'is_top_25pct': (percentile >= 75),
+        'is_bottom_10pct': (percentile <= 10),
+        'above_median': (user_value > median),
+        'above_mean': (user_value > mean),
+        'z_score': z_score,
+        'distance_to_median': user_value - median,
+        'distance_to_mean': user_value - mean
+    }
+```
+
+---
+
+## 🔄 截面统计综合应用模式
+
+### 模式1：分布诊断
+
+**核心思想：** 全面了解数据分布特性
+
+**诊断流程：**
+```python
+def diagnose_distribution(data):
+    """分布全面诊断"""
+
+    # 1. 集中趋势
+    mean = np.mean(data)
+    median = np.median(data)
+
+    # 2. 离散程度
+    std = np.std(data)
+    cv = std / mean if mean != 0 else 0
+
+    # 3. 分布形态
+    skewness = skew(data)
+    kurt = kurtosis(data, fisher=False)
+
+    # 4. 诊断结论
+    diagnosis = {
+        '集中趋势': {
+            '均值': mean,
+            '中位数': median,
+            '偏斜程度': '右偏' if mean > median * 1.1 else '左偏' if mean < median * 0.9 else '对称'
+        },
+        '离散程度': {
+            '标准差': std,
+            '变异系数': cv,
+            '离散评价': '低离散' if cv < 0.3 else '高离散' if cv > 0.7 else '中离散'
+        },
+        '分布形态': {
+            '偏度': skewness,
+            '峰度': kurt,
+            '形态评价': f"{'右' if skewness > 0 else '左'}偏，{'尖' if kurt > 3 else '平'}峰"
+        }
+    }
+
+    return diagnosis
+```
+
+---
+
+### 模式2：异常值检测
+
+**核心思想：** 基于分布识别异常
+
+**检测方法：**
+
+#### 方法1：Z-Score方法
+```python
+def detect_outliers_zscore(data, threshold=3):
+    """Z-Score异常检测"""
+    mean = np.mean(data)
+    std = np.std(data)
+    z_scores = [(x - mean) / std for x in data]
+
+    outliers = [i for i, z in enumerate(z_scores) if abs(z) > threshold]
+
+    return {
+        'outlier_indices': outliers,
+        'outlier_ratio': len(outliers) / len(data),
+        'outlier_values': [data[i] for i in outliers]
+    }
+```
+
+#### 方法2：IQR方法
+```python
+def detect_outliers_iqr(data, k=1.5):
+    """IQR异常检测"""
+    q1, q3 = np.percentile(data, [25, 75])
+    iqr = q3 - q1
+
+    lower_bound = q1 - k * iqr
+    upper_bound = q3 + k * iqr
+
+    outliers = [i for i, x in enumerate(data) if x < lower_bound or x > upper_bound]
+
+    return {
+        'lower_bound': lower_bound,
+        'upper_bound': upper_bound,
+        'outlier_indices': outliers,
+        'outlier_ratio': len(outliers) / len(data)
+    }
+```
+
+---
+
+### 模式3：用户分层
+
+**核心思想：** 基于分位数进行用户分层
+
+**分层方案：**
+
+```python
+def segment_users_by_percentile(user_values):
+    """基于分位数分层"""
+
+    # 定义分位数边界
+    p10, p25, p50, p75, p90 = np.percentile(user_values, [10, 25, 50, 75, 90])
+
+    # 分层逻辑
+    def classify_user(value):
+        if value >= p90:
+            return 'VIP用户（Top 10%）'
+        elif value >= p75:
+            return '优质用户（Top 25%）'
+        elif value >= p50:
+            return '中上用户（Top 50%）'
+        elif value >= p25:
+            return '中下用户（Bottom 50%）'
+        elif value >= p10:
+            return '低价值用户（Bottom 25%）'
+        else:
+            return '流失风险用户（Bottom 10%）'
+
+    segments = [classify_user(v) for v in user_values]
+
+    return {
+        'segments': segments,
+        'distribution': pd.Series(segments).value_counts()
+    }
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用截面统计？
+
+**触发条件：**
+1. 用户说"想了解数据分布"
+2. 用户的目标是"用户分层/异常检测"
+3. 用户说"不知道特征的分布情况"
+4. 用户需要特征标准化/归一化
+
+**引导话术：**
+```
+CHRIS: 在设计特征之前，我建议先用"截面统计"全面了解数据分布。
+
+       📊 截面统计从4个维度分析分布：
+       1. Central Tendency（集中趋势） - 典型值是多少？
+       2. Dispersion（离散程度） - 差异大吗？
+       3. Shape（分布形态） - 对称吗？有尾部吗？
+       4. Position（相对位置） - 用户在哪个分位？
+
+       💡 这些信息可以帮助：
+       - 识别异常值（Z-Score/IQR）
+       - 用户分层（分位数分段）
+       - 特征工程（是否需要变换）
+       - 风险评估（尾部风险）
+
+       🤔 要不要我先帮你做一个数据分布诊断？
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用截面统计时：**
+
+- [ ] 是否计算了集中趋势（均值/中位数）？
+- [ ] 是否计算了离散程度（标准差/CV）？
+- [ ] 是否分析了分布形态（偏度/峰度）？
+- [ ] 是否计算了分位数特征？
+- [ ] 是否检测了异常值？
+- [ ] 是否基于分布进行了用户分层？
+
+**记住：**
+> "不要只看均值，要看分布。
+> 均值告诉你中心，但离散、偏度、峰度告诉你完整的故事。"
+
+---
+
+**CHRIS Feature Engineering System**
+L3 数据形态框架 - 截面统计
+版本 3.0 | 2025年1月

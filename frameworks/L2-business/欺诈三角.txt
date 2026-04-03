@@ -1,0 +1,696 @@
+# L2 核心业务框架 - 欺诈三角（Fraud Triangle）
+
+## 📌 框架定位
+
+**本质：** 犯罪学经典理论，解释欺诈行为发生的三个必要条件
+
+**适用场景：**
+- 信贷欺诈检测
+- 信用卡盗刷识别
+- 保险欺诈侦测
+- 电商刷单/套现检测
+- 账号盗用识别
+- 任何涉及"欺诈/作弊"的风控场景
+
+**核心思想：**
+> "欺诈行为的发生需要三个条件同时满足：
+> Pressure（压力）- 为什么要欺诈？（动机）
+> Opportunity（机会）- 能不能欺诈？（可行性）
+> Rationalization（合理化）- 敢不敢欺诈？（心理障碍）"
+
+---
+
+## 🎯 欺诈三角详解
+
+### 核心理论
+
+```
+欺诈行为 = Pressure × Opportunity × Rationalization
+
+三者缺一不可：
+- 只有压力，没有机会 → 想但做不到
+- 只有机会，没有压力 → 不需要做
+- 有压力和机会，但不敢做（道德约束）→ 不会做
+```
+
+**重要理解：**
+```
+风控的本质是"破解三角"：
+1. 降低压力 → 提供合法渠道（如：提额）
+2. 消除机会 → 堵住漏洞（如：限额、验证）
+3. 提高合理化门槛 → 增加威慑（如：征信、黑名单）
+
+特征工程的目标是"识别三角"：
+→ 找到压力信号
+→ 找到机会信号
+→ 找到合理化信号
+```
+
+---
+
+## 📐 第一个角：Pressure（压力 - 动机）
+
+### 核心问题：为什么要欺诈？什么驱动了欺诈动机？
+
+**业务逻辑：**
+```
+压力 = 需求 - 合法获取能力
+
+需求包括：
+├─ 经济需求（缺钱、还债、生活压力）
+├─ 贪婪需求（套利、薅羊毛）
+├─ 报复需求（对平台/商家不满）
+└─ 虚荣需求（炫耀、攀比）
+
+合法获取能力：
+├─ 收入能力
+├─ 资产储备
+├─ 借贷渠道
+└─ 社会支持
+```
+
+### P1: 经济压力（Financial Pressure）
+
+**特征设计：**
+
+#### 1.1 收入压力
+```python
+pressure_income = {
+    # 收入不足
+    'income_level': '收入水平（低收入 = 高压力）',
+    'income_instability': '收入不稳定性（波动大 = 高压力）',
+    'income_decline': '收入下降趋势（下降 = 压力增加）',
+    'unemployment_flag': '失业标志',
+    'income_interruption_risk': '收入中断风险',
+
+    # 收入vs需求
+    'income_expense_gap': '收入-支出缺口（负值 = 高压力）',
+    'income_vs_living_cost': '收入 vs 所在地生活成本',
+    'income_vs_family_size': '收入 vs 家庭人口负担',
+
+    # 衍生压力
+    'financial_stress_score': '财务压力评分 = f(收入, 支出, 负债)'
+}
+```
+
+#### 1.2 负债压力
+```python
+pressure_debt = {
+    # 负债规模
+    'total_debt': '总负债金额',
+    'dti_ratio': '负债收入比（>50% = 高压力）',
+    'debt_growth_rate': '负债增长率（快速增长 = 压力增加）',
+
+    # 还款压力
+    'monthly_repayment': '月还款额',
+    'repayment_income_ratio': '月还款/月收入（>70% = 极高压力）',
+    'overdue_cnt': '逾期次数（逾期 = 还款困难）',
+    'overdue_amount': '逾期金额',
+
+    # 多头借贷（强压力信号）
+    'multi_loan_cnt': '多头借贷笔数（>3家 = 以贷养贷）',
+    'recent_apply_cnt': '近期申请次数（频繁申请 = 资金饥渴）',
+    'apply_rejection_cnt': '申请被拒次数（被拒多 = 走投无路）',
+
+    # 异常负债行为
+    'max_out_credit_card': '信用卡刷爆（使用率>95%）',
+    'cash_advance_cnt': '取现次数（取现 = 急需现金）',
+    'p2p_loan_cnt': 'P2P借款笔数（高利贷 = 极度缺钱）',
+
+    # 衍生压力
+    'debt_pressure_score': '负债压力评分 = f(负债规模, 还款压力, 多头借贷)'
+}
+```
+
+#### 1.3 生活压力
+```python
+pressure_living = {
+    # 家庭负担
+    'dependent_cnt': '赡养人口数（人口多 = 负担重）',
+    'has_elderly': '是否赡养老人',
+    'has_children': '是否有子女',
+    'child_edu_expense': '子女教育支出',
+
+    # 生活成本
+    'rent_or_mortgage': '房租/房贷月供',
+    'living_cost': '生活成本',
+    'medical_expense': '医疗支出（大额医疗 = 突发压力）',
+
+    # 生活质量下降
+    'consumption_decline': '消费下降趋势（降级 = 压力）',
+    'luxury_consumption_drop': '非必需消费下降',
+    'life_quality_decline_flag': '生活质量下降标志',
+
+    # 衍生压力
+    'living_pressure_score': '生活压力评分 = f(家庭负担, 生活成本, 质量下降)'
+}
+```
+
+### P2: 贪婪压力（Greed Pressure）
+
+**特征设计：**
+
+```python
+pressure_greed = {
+    # 套利行为
+    'arbitrage_behavior': '套利行为检测（如：信用卡套现）',
+    'promotion_abuse_cnt': '滥用促销活动次数',
+    'coupon_stacking': '优惠券叠加使用',
+    'cashback_farming': '返现套利行为',
+
+    # 薅羊毛特征
+    'wool_gathering_score': '薅羊毛评分',
+    'only_participate_promotions': '仅参与促销活动标志',
+    'minimal_margin_transactions': '卡边界交易（刚好触达优惠门槛）',
+    'rapid_cancel_after_reward': '获得奖励后快速取消',
+
+    # 贪婪信号
+    'always_max_limit': '总是申请最高额度',
+    'apply_all_products': '申请所有产品',
+    'referral_spam': '推荐返利刷量',
+
+    # 衍生压力
+    'greed_pressure_score': '贪婪压力评分 = f(套利, 薅羊毛, 极端行为)'
+}
+```
+
+### P3: 其他压力源
+
+```python
+pressure_others = {
+    # 赌博压力
+    'gambling_behavior': '赌博行为（交易对手为博彩网站）',
+    'frequent_gambling_txn': '频繁博彩交易',
+    'large_gambling_loss': '大额博彩亏损',
+
+    # 成瘾压力
+    'addiction_pattern': '成瘾模式（游戏充值、奢侈品）',
+    'compulsive_buying': '强迫性购买',
+
+    # 报复压力
+    'dispute_cnt': '争议/投诉次数（不满 → 报复）',
+    'refund_abuse': '退货退款滥用',
+    'negative_feedback': '负面反馈',
+
+    # 危机事件
+    'crisis_event_flag': '危机事件标志（失业、离婚、疾病）',
+    'sudden_life_change': '生活状况突变'
+}
+```
+
+---
+
+## 🔓 第二个角：Opportunity（机会 - 可行性）
+
+### 核心问题：能不能欺诈？系统有没有漏洞？
+
+**业务逻辑：**
+```
+机会 = 系统漏洞 + 知识/技能 + 低风险感知
+
+机会来源：
+├─ 系统防控薄弱环节
+├─ 信息不对称
+├─ 监管盲区
+└─ 低成本试错
+```
+
+### O1: 系统漏洞（System Vulnerabilities）
+
+**特征设计：**
+
+#### 1.1 身份验证漏洞
+```python
+opportunity_identity = {
+    # 身份信息异常
+    'identity_inconsistency': '身份信息前后不一致',
+    'fake_identity_score': '虚假身份评分',
+    'id_photo_mismatch': '身份证照片与本人不符',
+
+    # 弱验证通过
+    'weak_auth_passed': '通过弱验证方式（如：短信验证码）',
+    'no_biometric_auth': '未进行生物识别验证',
+    'auth_bypass_attempt': '尝试绕过验证',
+
+    # 身份盗用特征
+    'stolen_identity_risk': '身份盗用风险评分',
+    'identity_mismatch_with_behavior': '身份与行为不匹配',
+    # 如：老年人身份但使用年轻人APP
+}
+```
+
+#### 1.2 交易验证漏洞
+```python
+opportunity_transaction = {
+    # 无需验证的交易
+    'no_verify_txn_cnt': '无验证交易次数',
+    'no_password_txn_cnt': '无密码交易次数',
+    'auto_pass_txn_cnt': '自动通过交易次数',
+
+    # 小额测试
+    'small_amount_test': '小额测试行为（先小额试探）',
+    'gradual_amount_increase': '金额逐步增加（测试额度上限）',
+
+    # 批量操作
+    'batch_operation_flag': '批量操作标志（机器行为）',
+    'rapid_consecutive_txn': '快速连续交易',
+
+    # 异常交易通过
+    'abnormal_txn_approved': '异常交易被通过（系统漏判）',
+    'high_risk_but_approved': '高风险但被批准'
+}
+```
+
+#### 1.3 监管盲区
+```python
+opportunity_blind_spots = {
+    # 跨境/跨平台（监管难）
+    'cross_border_txn': '跨境交易（监管弱）',
+    'cross_platform_operation': '跨平台操作',
+    'use_anonymous_channel': '使用匿名渠道（如：虚拟币）',
+
+    # 新渠道/新产品（风控弱）
+    'use_new_channel': '使用新渠道',
+    'use_new_product': '使用新产品',
+    'early_adopter_flag': '新功能早期使用者（风控不成熟）',
+
+    # 低监控时段
+    'off_hours_txn': '非工作时间交易',
+    'holiday_txn': '节假日交易',
+    'midnight_operation': '凌晨操作（人工审核少）'
+}
+```
+
+### O2: 知识与技能（Knowledge & Skills）
+
+**特征设计：**
+
+```python
+opportunity_knowledge = {
+    # 技术能力
+    'tech_savvy_score': '技术能力评分',
+    'use_vpn': '使用VPN（懂得隐藏）',
+    'device_jailbreak': '设备越狱/Root（技术能力）',
+    'use_proxy': '使用代理IP',
+
+    # 业务熟悉度
+    'platform_tenure': '平台使用时长（老用户更懂规则）',
+    'deep_feature_usage': '深度功能使用（熟悉系统）',
+    'rule_boundary_testing': '规则边界测试（试探风控）',
+
+    # 专业团伙特征
+    'professional_fraud_pattern': '专业欺诈模式',
+    'similar_to_known_fraudster': '与已知欺诈者相似',
+    'use_fraud_tools': '使用欺诈工具（如：改号软件）'
+}
+```
+
+### O3: 低风险感知（Low Perceived Risk）
+
+**特征设计：**
+
+```python
+opportunity_low_risk = {
+    # 低额度（低风险感知）
+    'low_amount_txn': '小额交易（觉得不会被发现）',
+    'below_manual_review_threshold': '低于人工审核阈值',
+
+    # 无历史处罚
+    'no_previous_penalty': '无历史处罚记录（觉得可以逃脱）',
+    'escaped_before': '曾经逃脱过（侥幸心理）',
+
+    # 匿名性
+    'anonymity_score': '匿名性评分（难以追溯）',
+    'use_disposable_account': '使用一次性账号',
+    'no_real_name_verification': '无实名验证',
+
+    # 低成本
+    'low_cost_to_try': '尝试成本低',
+    'easy_to_create_account': '容易创建账号',
+    'no_deposit_required': '无需押金/保证金'
+}
+```
+
+---
+
+## 🧠 第三个角：Rationalization（合理化 - 心理障碍）
+
+### 核心问题：敢不敢欺诈？道德约束强不强？
+
+**业务逻辑：**
+```
+合理化 = 降低道德罪恶感
+
+常见合理化借口：
+├─ "公司很有钱，不差这点" （Robin Hood心态）
+├─ "大家都这么做" （从众心理）
+├─ "我只是暂时借用，以后会还" （自我欺骗）
+├─ "我被逼无奈" （受害者心态）
+└─ "这是他们的漏洞，不是我的错" （归因外部）
+```
+
+### R1: 道德约束弱（Weak Moral Constraint）
+
+**特征设计：**
+
+#### 1.1 信用意识差
+```python
+rationalization_credit = {
+    # 历史失信
+    'overdue_history': '历史逾期记录（不守信）',
+    'breach_of_contract': '违约记录',
+    'dishonest_behavior_cnt': '不诚信行为次数',
+
+    # 信用意识
+    'credit_awareness_score': '信用意识评分',
+    'dont_care_credit_score': '不在乎信用评分（无所谓心态）',
+    'frequent_breach': '频繁违约（习惯性失信）',
+
+    # 道德底线
+    'moral_bottom_line_score': '道德底线评分',
+    'previous_fraud_record': '历史欺诈记录',
+    'related_to_fraudster': '与欺诈者关联'
+}
+```
+
+#### 1.2 社会规范弱
+```python
+rationalization_social = {
+    # 社会约束
+    'social_network_quality': '社交网络质量（圈子风气）',
+    'fraud_rate_in_network': '社交网络中的欺诈率',
+    'peer_fraud_behavior': '朋友圈有欺诈行为',
+
+    # 社会地位
+    'social_status': '社会地位（地位高 → 约束强）',
+    'reputation_at_stake': '有无名誉风险（公众人物 → 不敢）',
+    'professional_reputation': '职业声誉风险',
+
+    # 社会支持
+    'social_support_score': '社会支持评分（支持多 → 不需要欺诈）',
+    'family_support': '家庭支持',
+    'community_integration': '社区融入度'
+}
+```
+
+### R2: 合理化倾向高（High Rationalization Tendency）
+
+**特征设计：**
+
+```python
+rationalization_tendency = {
+    # 受害者心态
+    'victim_mentality': '受害者心态（觉得自己被亏待）',
+    'complaint_cnt': '投诉次数（不满多 → 报复心理）',
+    'dispute_cnt': '争议次数',
+    'negative_review_cnt': '负面评价次数',
+
+    # 从众心理
+    'herd_behavior': '从众行为（大家都这么做）',
+    'follow_fraud_tutorial': '关注/分享欺诈教程',
+    'participate_wool_gathering_group': '参与薅羊毛群组',
+
+    # 归因外部
+    'external_attribution': '外部归因倾向（不是我的错）',
+    'blame_system': '责怪系统（系统的漏洞）',
+
+    # 自我欺骗
+    'self_deception': '自我欺骗（只是暂时借用）',
+    'plan_to_repay_later': '声称以后会还（说辞）'
+}
+```
+
+### R3: 威慑力弱（Weak Deterrence）
+
+**特征设计：**
+
+```python
+rationalization_deterrence = {
+    # 处罚风险感知
+    'perceived_punishment_risk': '感知到的处罚风险',
+    'know_legal_consequences': '是否了解法律后果',
+    'fear_of_blacklist': '是否害怕被拉黑',
+
+    # 实际威慑
+    'previous_penalty': '历史处罚记录（有过 → 知道后果）',
+    'seen_others_punished': '看到他人被处罚',
+    'media_exposure_risk': '媒体曝光风险',
+
+    # 追溯能力感知
+    'perceived_traceability': '感知到的可追溯性',
+    'real_name_verified': '已实名认证（可追溯）',
+    'kyc_completed': '完成KYC认证',
+    'collateral_at_stake': '有抵押物（有制约）'
+}
+```
+
+---
+
+## 🔄 欺诈三角综合应用模式
+
+### 模式1：三角综合评分
+
+**核心思想：** 三个角度都高，欺诈风险极高
+
+**公式：**
+```
+欺诈风险 = Pressure_Score × Opportunity_Score × Rationalization_Score
+
+关键：是乘法，不是加法
+→ 三者缺一，风险大幅下降
+→ 三者都高，风险指数级增长
+
+阈值设定：
+├─ 高风险：Score > 0.7 × 0.7 × 0.7 = 0.343
+├─ 中风险：0.5 × 0.5 × 0.5 = 0.125 < Score < 0.343
+└─ 低风险：Score < 0.125
+```
+
+**实现代码：**
+```python
+def fraud_triangle_score(features):
+    """欺诈三角综合评分"""
+
+    # P - Pressure（压力）
+    pressure_score = (
+        0.4 * normalize(features['financial_stress_score']) +
+        0.3 * normalize(features['debt_pressure_score']) +
+        0.2 * normalize(features['living_pressure_score']) +
+        0.1 * normalize(features['greed_pressure_score'])
+    )
+
+    # O - Opportunity（机会）
+    opportunity_score = (
+        0.4 * normalize(features['system_vulnerability_score']) +
+        0.3 * normalize(features['knowledge_skill_score']) +
+        0.3 * normalize(features['low_risk_perception_score'])
+    )
+
+    # R - Rationalization（合理化）
+    rationalization_score = (
+        0.4 * (1 - normalize(features['moral_constraint_score'])) +  # 反向
+        0.3 * normalize(features['rationalization_tendency']) +
+        0.3 * (1 - normalize(features['deterrence_score']))  # 反向
+    )
+
+    # 三角乘积
+    fraud_risk = pressure_score * opportunity_score * rationalization_score
+
+    return {
+        'fraud_risk_score': fraud_risk,
+        'pressure_score': pressure_score,
+        'opportunity_score': opportunity_score,
+        'rationalization_score': rationalization_score,
+        'risk_level': 'high' if fraud_risk > 0.343 else 'medium' if fraud_risk > 0.125 else 'low'
+    }
+```
+
+---
+
+### 模式2：三角短板分析
+
+**核心思想：** 找到最弱的那个角，重点防控
+
+**分析逻辑：**
+```
+三角诊断：
+1. P高 + O高 + R低 → 有压力、有机会，但不敢做
+   → 策略：强化威慑（征信、黑名单）
+
+2. P高 + O低 + R高 → 想做、敢做，但做不到
+   → 策略：维持现有防控，无需加强
+
+3. P低 + O高 + R高 → 没压力，但有机会且不在乎
+   → 策略：堵住漏洞（强化验证）
+
+4. P高 + O高 + R高 → 三高，极度危险
+   → 策略：直接拒绝/人工审核
+```
+
+**实现代码：**
+```python
+def fraud_triangle_diagnosis(scores):
+    """三角短板诊断"""
+    p, o, r = scores['pressure_score'], scores['opportunity_score'], scores['rationalization_score']
+
+    # 找到最高的两个
+    sorted_scores = sorted([('P', p), ('O', o), ('R', r)], key=lambda x: x[1], reverse=True)
+    top_two = [s[0] for s in sorted_scores[:2]]
+    weakest = sorted_scores[2][0]
+
+    if p > 0.7 and o > 0.7 and r > 0.7:
+        return {
+            'diagnosis': 'triple_high',
+            'action': 'REJECT or INTENSIVE_REVIEW',
+            'reason': '三角都高，极度危险'
+        }
+
+    elif weakest == 'P':
+        return {
+            'diagnosis': 'low_pressure',
+            'action': 'APPROVE with monitoring',
+            'reason': '压力低，欺诈动机弱'
+        }
+
+    elif weakest == 'O':
+        return {
+            'diagnosis': 'low_opportunity',
+            'action': 'APPROVE',
+            'reason': '机会少，系统防控到位'
+        }
+
+    elif weakest == 'R':
+        return {
+            'diagnosis': 'high_moral_constraint',
+            'action': 'APPROVE',
+            'reason': '道德约束强，不敢欺诈'
+        }
+
+    else:
+        return {
+            'diagnosis': 'balanced_medium',
+            'action': 'REVIEW',
+            'reason': '三角均衡，中等风险'
+        }
+```
+
+---
+
+### 模式3：三角交叉验证
+
+**核心思想：** P/O/R之间应该相互印证
+
+**异常组合检测：**
+```
+合理组合：
+✅ 高P + 高O + 高R → 一致，高风险
+✅ 低P + 低O + 低R → 一致，低风险
+
+异常组合：
+❌ 高P + 低O + 低R，但【行为异常】→ 隐藏的O和R？
+❌ 低P + 高O + 高R，但【频繁申请】→ 隐藏的P？
+❌ 高P + 高O + 低R，但【历史逾期】→ R评估错误？
+```
+
+**实现代码：**
+```python
+def fraud_triangle_cross_validation(features, scores):
+    """三角交叉验证"""
+    anomalies = []
+
+    p, o, r = scores['pressure_score'], scores['opportunity_score'], scores['rationalization_score']
+
+    # 检测1：低压力但频繁申请
+    if p < 0.3 and features['recent_apply_cnt'] > 5:
+        anomalies.append({
+            'type': 'hidden_pressure',
+            'reason': '压力评分低，但频繁申请多家机构，可能存在隐藏的财务压力',
+            'action': '深挖财务状况'
+        })
+
+    # 检测2：高道德约束但有逾期历史
+    if r < 0.3 and features['overdue_cnt'] > 0:
+        anomalies.append({
+            'type': 'moral_inconsistency',
+            'reason': '道德约束评分高，但有逾期记录，评估可能错误',
+            'action': '重新评估道德约束'
+        })
+
+    # 检测3：低机会但行为异常
+    if o < 0.3 and features['abnormal_behavior_flag']:
+        anomalies.append({
+            'type': 'hidden_opportunity',
+            'reason': '机会评分低，但出现异常行为，可能发现了新漏洞',
+            'action': '分析异常行为模式'
+        })
+
+    # 检测4：三角都低但申请大额
+    if p < 0.3 and o < 0.3 and r < 0.3 and features['apply_amount'] > 100000:
+        anomalies.append({
+            'type': 'amount_triangle_mismatch',
+            'reason': '三角评分都低，但申请大额，可能是身份盗用',
+            'action': '强化身份验证'
+        })
+
+    return anomalies
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用欺诈三角？
+
+**触发条件：**
+1. 用户明确说"欺诈检测/反欺诈/作弊识别"
+2. 用户的业务是风控相关
+3. 用户说"不知道欺诈特征怎么做"
+4. 用户的数据有欺诈标签（fraud_flag）
+
+**引导话术：**
+```
+CHRIS: 我看到你的任务是欺诈检测，这个场景非常适合用
+       "欺诈三角理论"来指导特征设计。
+
+       🔺 欺诈三角理论认为，欺诈行为需要3个条件：
+       1. Pressure（压力） - 为什么要欺诈？（经济压力/贪婪）
+       2. Opportunity（机会） - 能不能欺诈？（系统漏洞/低风险）
+       3. Rationalization（合理化） - 敢不敢欺诈？（道德约束弱）
+
+       💡 三者缺一不可，都高才会欺诈。
+
+       📊 根据你的数据，我初步判断：
+       - Pressure: 可用【收入、负债、申请频率】字段
+       - Opportunity: 可用【验证方式、交易金额、设备信息】字段
+       - Rationalization: 可用【信用历史、逾期记录】字段
+
+       🤔 我建议从以下角度设计特征：
+       1. 识别高压力用户（财务困难、多头借贷）
+       2. 识别高机会场景（弱验证、异常交易）
+       3. 识别低道德约束（历史失信、无社会约束）
+
+       你想从哪个角开始？还是我帮你设计完整的三角特征体系？
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用欺诈三角时：**
+
+- [ ] 是否覆盖了全部3个角？
+- [ ] 是否用乘法而不是加法计算风险？
+- [ ] 是否分析了三角的短板？
+- [ ] 是否进行了三角交叉验证（检测矛盾）？
+- [ ] 是否根据三角诊断制定策略？
+
+**记住：**
+> "欺诈三角不是3个独立的维度，而是相互依存的整体。
+> 破解任何一个角，都能大幅降低欺诈风险。
+> 风控的艺术，就是识别三角、破解三角。"
+
+---
+
+**CHRIS Feature Engineering System**
+L2 核心业务框架 - 欺诈三角
+版本 3.0 | 2025年1月

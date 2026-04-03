@@ -1,0 +1,635 @@
+# L3 数据形态框架 - 时间序列分析（Time Series Analysis）
+
+## 📌 框架定位
+
+**本质：** 从时间维度挖掘特征，捕捉趋势、周期、稳定性、异常
+
+**适用场景：**
+- 任何有时间戳的数据
+- 用户行为序列分析
+- 流失预警（行为趋势恶化）
+- 欺诈检测（行为模式突变）
+- 信用评分（还款稳定性）
+- 业务预测（趋势外推）
+
+**核心思想：**
+> "时间序列不只是一串数字，而是包含4种信息：
+> Trend（趋势）- 长期走向
+> Seasonality（周期）- 规律性波动
+> Volatility（波动性）- 稳定程度
+> Anomaly（异常）- 突变点"
+
+---
+
+## 🎯 时间序列四维度详解
+
+### 维度1：Trend（趋势特征）
+
+**核心问题：** 长期走向如何？增长还是下降？
+
+**业务逻辑：**
+```
+趋势体现用户状态演化：
+- 上升趋势：用户成长中（活跃度提升/消费增长）
+- 下降趋势：用户衰退中（流失风险/消费降级）
+- 平稳趋势：用户稳定（成熟用户）
+- 无趋势：用户随机（不稳定）
+```
+
+---
+
+#### 1.1 趋势方向特征
+
+**特征设计：**
+
+```python
+trend_direction = {
+    # 线性趋势
+    'linear_trend_slope': '线性回归斜率（趋势方向）',
+    'linear_trend_r2': '线性拟合R²（趋势强度）',
+    'trend_p_value': '趋势显著性p值',
+
+    # 趋势方向标签
+    'trend_direction': '趋势方向（increasing/decreasing/stable）',
+    'strong_upward_trend': '强上升趋势标志（斜率>阈值且R²>0.7）',
+    'strong_downward_trend': '强下降趋势标志（流失预警）',
+
+    # 非线性趋势
+    'polynomial_trend_degree': '多项式趋势阶数',
+    'exponential_growth': '指数增长标志',
+    'exponential_decay': '指数衰减标志',
+
+    # 趋势变化点
+    'trend_change_point': '趋势变化点位置',
+    'trend_reversal': '趋势反转标志（从上升变下降）'
+}
+```
+
+**计算示例：**
+```python
+import numpy as np
+from scipy import stats
+
+def calculate_trend_features(time_series):
+    """计算趋势特征"""
+    n = len(time_series)
+    x = np.arange(n)  # 时间索引
+    y = np.array(time_series)
+
+    # 线性回归
+    slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+
+    # 趋势方向
+    if p_value < 0.05:  # 趋势显著
+        if slope > 0:
+            trend_dir = 'increasing'
+        else:
+            trend_dir = 'decreasing'
+    else:
+        trend_dir = 'stable'
+
+    return {
+        'linear_trend_slope': slope,
+        'linear_trend_r2': r_value**2,
+        'trend_p_value': p_value,
+        'trend_direction': trend_dir,
+        'strong_upward_trend': (slope > 0 and r_value**2 > 0.7),
+        'strong_downward_trend': (slope < 0 and r_value**2 > 0.7)
+    }
+```
+
+---
+
+#### 1.2 趋势强度特征
+
+**特征设计：**
+
+```python
+trend_strength = {
+    # 趋势显著性
+    'trend_significance': '趋势显著性（R²）',
+    'trend_confidence': '趋势置信度',
+
+    # 趋势速率
+    'trend_rate': '趋势速率（单位时间变化量）',
+    'trend_percentage': '趋势百分比（变化率/均值）',
+
+    # 趋势加速度
+    'trend_acceleration': '趋势加速度（二阶导数）',
+    'accelerating_trend': '加速趋势标志（加速度>0）',
+    'decelerating_trend': '减速趋势标志（加速度<0）',
+
+    # 趋势持续性
+    'trend_duration': '趋势持续时长',
+    'trend_consistency': '趋势一致性（方向不变的时间占比）'
+}
+```
+
+---
+
+### 维度2：Seasonality（周期特征）
+
+**核心问题：** 是否有规律性波动？什么周期？
+
+**业务逻辑：**
+```
+周期性体现用户习惯：
+- 周周期：周末活跃 vs 工作日活跃
+- 月周期：月初消费 vs 月末消费（发薪日效应）
+- 年周期：季节性需求
+- 日内周期：时段偏好
+```
+
+---
+
+#### 2.1 周期识别特征
+
+**特征设计：**
+
+```python
+seasonality_detection = {
+    # 自相关
+    'autocorr_lag1': '1阶自相关系数（相邻时间点相关性）',
+    'autocorr_lag7': '7阶自相关系数（周周期）',
+    'autocorr_lag30': '30阶自相关系数（月周期）',
+
+    # 周期强度
+    'seasonality_strength': '周期性强度',
+    'has_weekly_pattern': '有周周期标志',
+    'has_monthly_pattern': '有月周期标志',
+
+    # FFT频域分析
+    'dominant_frequency': '主导频率',
+    'dominant_period': '主导周期长度',
+    'frequency_power': '频率能量（周期强度）',
+
+    # 周期稳定性
+    'seasonality_consistency': '周期稳定性（周期是否规律）'
+}
+```
+
+**计算示例：**
+```python
+from statsmodels.tsa.seasonal import seasonal_decompose
+import numpy as np
+
+def calculate_seasonality_features(time_series, period=7):
+    """计算周期性特征"""
+    # 季节分解
+    decomposition = seasonal_decompose(time_series, model='additive', period=period)
+    seasonal = decomposition.seasonal
+
+    # 自相关
+    autocorr_lag7 = np.corrcoef(time_series[:-period], time_series[period:])[0, 1]
+
+    # 周期强度 = 季节成分方差 / 原始序列方差
+    seasonality_strength = np.var(seasonal) / np.var(time_series)
+
+    return {
+        'autocorr_lag7': autocorr_lag7,
+        'seasonality_strength': seasonality_strength,
+        'has_weekly_pattern': (autocorr_lag7 > 0.3)  # 阈值可调
+    }
+```
+
+---
+
+#### 2.2 周期模式特征
+
+**特征设计：**
+
+```python
+seasonality_pattern = {
+    # 工作日vs周末
+    'weekday_avg': '工作日平均值',
+    'weekend_avg': '周末平均值',
+    'weekend_ratio': '周末占比',
+    'weekend_lift': '周末提升 = (周末均值 - 工作日均值) / 工作日均值',
+
+    # 月内模式
+    'month_start_ratio': '月初占比（1-10号）',
+    'month_mid_ratio': '月中占比（11-20号）',
+    'month_end_ratio': '月末占比（21-31号）',
+    'payday_effect': '发薪日效应（月初vs其他）',
+
+    # 时段模式
+    'morning_ratio': '早晨占比（6-12点）',
+    'afternoon_ratio': '下午占比（12-18点）',
+    'evening_ratio': '晚上占比（18-24点）',
+    'midnight_ratio': '凌晨占比（0-6点）',
+    'preferred_time_slot': '偏好时段',
+
+    # 季节模式（如适用）
+    'spring_ratio': '春季占比',
+    'summer_ratio': '夏季占比',
+    'autumn_ratio': '秋季占比',
+    'winter_ratio': '冬季占比'
+}
+```
+
+---
+
+### 维度3：Volatility（波动性特征）
+
+**核心问题：** 稳定吗？波动大吗？
+
+**业务逻辑：**
+```
+波动性体现用户稳定性：
+- 低波动：稳定用户（行为可预测）
+- 高波动：不稳定用户（随机性强）
+- 波动突增：状态变化（可能流失/转化）
+```
+
+---
+
+#### 3.1 波动程度特征
+
+**特征设计：**
+
+```python
+volatility_level = {
+    # 统计波动
+    'std_deviation': '标准差（绝对波动）',
+    'coefficient_of_variation': '变异系数 = std / mean（相对波动）',
+    'range': '极差 = max - min',
+    'iqr': '四分位距 = Q3 - Q1',
+
+    # 波动率
+    'volatility': '波动率（金融定义）',
+    'daily_volatility': '日波动率',
+    'annualized_volatility': '年化波动率',
+
+    # 波动分段
+    'low_volatility_flag': '低波动标志（CV<0.3）',
+    'medium_volatility_flag': '中波动标志（0.3<=CV<0.7）',
+    'high_volatility_flag': '高波动标志（CV>=0.7）',
+
+    # 相对波动
+    'volatility_vs_peer': '波动 vs 同类用户平均波动'
+}
+```
+
+---
+
+#### 3.2 波动模式特征
+
+**特征设计：**
+
+```python
+volatility_pattern = {
+    # 波动聚类
+    'volatility_clustering': '波动聚类（高波动后还是高波动）',
+    'garch_effect': 'GARCH效应',
+
+    # 波动趋势
+    'volatility_trend': '波动趋势（波动在增加还是减少）',
+    'increasing_volatility': '波动增加标志（不稳定性提升）',
+
+    # 波动周期
+    'volatility_seasonality': '波动的周期性',
+    'weekend_volatility_higher': '周末波动更高',
+
+    # 异常波动
+    'extreme_volatility_cnt': '极端波动次数（>3σ）',
+    'volatility_spike': '波动突增事件',
+    'volatility_regime_change': '波动机制改变（从稳定变不稳定）'
+}
+```
+
+**计算示例：**
+```python
+def calculate_volatility_features(time_series):
+    """计算波动性特征"""
+    mean = np.mean(time_series)
+    std = np.std(time_series)
+    cv = std / mean if mean != 0 else 0
+
+    # 滚动波动
+    window = 7
+    rolling_std = pd.Series(time_series).rolling(window).std()
+    volatility_trend_slope = np.polyfit(range(len(rolling_std[~np.isnan(rolling_std)])),
+                                        rolling_std[~np.isnan(rolling_std)], 1)[0]
+
+    return {
+        'std_deviation': std,
+        'coefficient_of_variation': cv,
+        'low_volatility_flag': (cv < 0.3),
+        'high_volatility_flag': (cv >= 0.7),
+        'increasing_volatility': (volatility_trend_slope > 0)
+    }
+```
+
+---
+
+### 维度4：Anomaly（异常检测特征）
+
+**核心问题：** 有突变吗？何时异常？
+
+**业务逻辑：**
+```
+异常体现关键事件：
+- 突然激增：新需求/营销效果/薅羊毛
+- 突然下跌：流失/封号/竞品
+- 模式突变：用户状态改变
+```
+
+---
+
+#### 4.1 点异常特征（Point Anomaly）
+
+**特征设计：**
+
+```python
+point_anomaly = {
+    # 统计异常
+    'outlier_cnt': '离群点数量（>3σ）',
+    'outlier_ratio': '离群点占比',
+    'max_deviation': '最大偏离 = (max - mean) / std',
+    'min_deviation': '最小偏离 = (min - mean) / std',
+
+    # 突增突降
+    'sudden_spike_cnt': '突然激增次数（>2σ）',
+    'sudden_drop_cnt': '突然下跌次数（<-2σ）',
+    'largest_spike': '最大激增幅度',
+    'largest_drop': '最大下跌幅度',
+
+    # 异常位置
+    'recent_anomaly': '最近是否有异常（近7天）',
+    'anomaly_recency': '距离最近一次异常天数',
+    'anomaly_frequency': '异常频率',
+
+    # 异常方向
+    'positive_anomaly_ratio': '正向异常占比（激增）',
+    'negative_anomaly_ratio': '负向异常占比（下跌）'
+}
+```
+
+**检测方法：**
+```python
+def detect_point_anomalies(time_series, threshold=3):
+    """检测点异常"""
+    mean = np.mean(time_series)
+    std = np.std(time_series)
+
+    # Z-score方法
+    z_scores = [(x - mean) / std for x in time_series]
+    outliers = [i for i, z in enumerate(z_scores) if abs(z) > threshold]
+
+    # 特征
+    outlier_cnt = len(outliers)
+    outlier_ratio = outlier_cnt / len(time_series)
+
+    # 突增突降
+    spikes = [i for i, z in enumerate(z_scores) if z > 2]
+    drops = [i for i, z in enumerate(z_scores) if z < -2]
+
+    return {
+        'outlier_cnt': outlier_cnt,
+        'outlier_ratio': outlier_ratio,
+        'sudden_spike_cnt': len(spikes),
+        'sudden_drop_cnt': len(drops),
+        'max_deviation': max(z_scores),
+        'min_deviation': min(z_scores)
+    }
+```
+
+---
+
+#### 4.2 模式异常特征（Pattern Anomaly）
+
+**特征设计：**
+
+```python
+pattern_anomaly = {
+    # 趋势突变
+    'trend_change_point': '趋势变化点',
+    'trend_reversal': '趋势反转（从升变降或从降变升）',
+
+    # 周期破坏
+    'seasonality_break': '周期性破坏（原来有周期，现在没了）',
+    'pattern_shift': '模式迁移',
+
+    # 波动突变
+    'volatility_regime_change': '波动机制改变',
+    'sudden_stability': '突然稳定（波动突降）',
+    'sudden_instability': '突然不稳定（波动突增）',
+
+    # 分布改变
+    'distribution_shift': '分布漂移',
+    'mean_shift': '均值漂移（前后对比）',
+    'variance_shift': '方差漂移'
+}
+```
+
+---
+
+## 🔄 时间序列综合应用模式
+
+### 模式1：时序分解（Decomposition）
+
+**核心思想：** 将时间序列分解为趋势+周期+噪音
+
+**分解公式：**
+```
+加法模型：Y(t) = Trend(t) + Seasonality(t) + Residual(t)
+乘法模型：Y(t) = Trend(t) × Seasonality(t) × Residual(t)
+```
+
+**特征提取：**
+```python
+from statsmodels.tsa.seasonal import seasonal_decompose
+
+def extract_decomposition_features(time_series, period=7):
+    """时序分解特征"""
+    # 分解
+    decomposition = seasonal_decompose(time_series, model='additive', period=period)
+
+    trend = decomposition.trend
+    seasonal = decomposition.seasonal
+    residual = decomposition.resid
+
+    # 各成分强度
+    trend_strength = np.var(trend[~np.isnan(trend)]) / np.var(time_series)
+    seasonal_strength = np.var(seasonal) / np.var(time_series)
+    residual_strength = np.var(residual[~np.isnan(residual)]) / np.var(time_series)
+
+    # 趋势特征
+    trend_slope = np.polyfit(range(len(trend[~np.isnan(trend)])),
+                              trend[~np.isnan(trend)], 1)[0]
+
+    return {
+        'trend_strength': trend_strength,
+        'seasonal_strength': seasonal_strength,
+        'residual_strength': residual_strength,
+        'trend_slope': trend_slope,
+        'has_strong_trend': (trend_strength > 0.5),
+        'has_strong_seasonality': (seasonal_strength > 0.3)
+    }
+```
+
+---
+
+### 模式2：滚动窗口特征（Rolling Window）
+
+**核心思想：** 不同时间窗口的统计特征
+
+**特征设计：**
+```python
+def extract_rolling_features(time_series, windows=[7, 30, 90]):
+    """滚动窗口特征"""
+    features = {}
+
+    for w in windows:
+        series = pd.Series(time_series)
+
+        # 滚动统计
+        rolling_mean = series.rolling(w).mean()
+        rolling_std = series.rolling(w).std()
+        rolling_min = series.rolling(w).min()
+        rolling_max = series.rolling(w).max()
+
+        # 当前值 vs 滚动统计
+        current = series.iloc[-1]
+        features[f'current_vs_ma_{w}'] = current / rolling_mean.iloc[-1]
+        features[f'current_vs_min_{w}'] = (current - rolling_min.iloc[-1]) / (rolling_max.iloc[-1] - rolling_min.iloc[-1])
+
+        # 滚动趋势
+        features[f'rolling_trend_{w}'] = rolling_mean.iloc[-1] / rolling_mean.iloc[-w]
+
+        # 滚动波动
+        features[f'rolling_volatility_{w}'] = rolling_std.iloc[-1] / rolling_mean.iloc[-1]
+
+    return features
+```
+
+---
+
+### 模式3：多时间窗口对比
+
+**核心思想：** 近期 vs 历史对比
+
+**特征设计：**
+```python
+def extract_window_comparison_features(time_series):
+    """多窗口对比特征"""
+    # 定义窗口
+    recent_7d = time_series[-7:]
+    recent_30d = time_series[-30:]
+    history = time_series[:-30]
+
+    # 均值对比
+    mean_7d = np.mean(recent_7d)
+    mean_30d = np.mean(recent_30d)
+    mean_history = np.mean(history)
+
+    features = {
+        # 近期vs历史
+        'recent_7d_vs_history': mean_7d / mean_history if mean_history != 0 else 0,
+        'recent_30d_vs_history': mean_30d / mean_history if mean_history != 0 else 0,
+
+        # 短期vs中期
+        'recent_7d_vs_30d': mean_7d / mean_30d if mean_30d != 0 else 0,
+
+        # 趋势
+        'accelerating': (mean_7d > mean_30d > mean_history),
+        'decelerating': (mean_7d < mean_30d < mean_history),
+
+        # 波动对比
+        'volatility_7d_vs_history': np.std(recent_7d) / np.std(history) if np.std(history) != 0 else 0
+    }
+
+    return features
+```
+
+---
+
+### 模式4：时序衍生特征
+
+**特征设计：**
+```python
+def extract_derived_features(time_series):
+    """时序衍生特征"""
+    features = {}
+
+    # 差分（一阶）
+    diff_1 = np.diff(time_series)
+    features['mean_diff_1'] = np.mean(diff_1)
+    features['std_diff_1'] = np.std(diff_1)
+
+    # 差分（二阶）- 加速度
+    diff_2 = np.diff(diff_1)
+    features['mean_diff_2'] = np.mean(diff_2)  # 加速度
+
+    # 变化率
+    pct_change = [(time_series[i] - time_series[i-1]) / time_series[i-1]
+                  for i in range(1, len(time_series)) if time_series[i-1] != 0]
+    features['mean_pct_change'] = np.mean(pct_change)
+    features['std_pct_change'] = np.std(pct_change)
+
+    # 累积
+    features['cumsum'] = np.sum(time_series)
+    features['cumprod'] = np.prod(time_series)
+
+    # 动量
+    features['momentum_7d'] = time_series[-1] - time_series[-7]
+    features['momentum_30d'] = time_series[-1] - time_series[-30]
+
+    return features
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用时间序列分析？
+
+**触发条件：**
+1. 用户的数据有时间戳字段
+2. 用户的目标是"流失预警/趋势预测/异常检测"
+3. 用户说"想看用户行为变化"
+4. 用户的数据是时间序列形式
+
+**引导话术：**
+```
+CHRIS: 我看到你的数据有时间序列信息，可以用"时间序列分析"
+       挖掘更深层的特征。
+
+       📈 时间序列分析可以提取4类特征：
+       1. Trend（趋势） - 用户是成长还是衰退？
+       2. Seasonality（周期） - 有规律性吗？周末活跃？
+       3. Volatility（波动） - 稳定吗？可预测吗？
+       4. Anomaly（异常） - 有突变吗？何时异常？
+
+       💡 这些特征特别适合：
+       - 流失预警（趋势下降+波动增加 = 流失风险）
+       - 欺诈检测（模式突变+异常激增 = 欺诈信号）
+       - 用户分层（稳定用户 vs 不稳定用户）
+
+       🤔 你想从哪个维度开始？
+       还是我帮你设计完整的时序特征体系？
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用时间序列分析时：**
+
+- [ ] 是否提取了趋势特征？
+- [ ] 是否识别了周期模式？
+- [ ] 是否计算了波动性？
+- [ ] 是否检测了异常？
+- [ ] 是否使用了多时间窗口对比？
+- [ ] 是否进行了时序分解？
+
+**记住：**
+> "时间序列不是静态快照，而是动态电影。
+> 趋势告诉你方向，周期告诉你规律，
+> 波动告诉你稳定性，异常告诉你关键事件。"
+
+---
+
+**CHRIS Feature Engineering System**
+L3 数据形态框架 - 时间序列分析
+版本 3.0 | 2025年1月

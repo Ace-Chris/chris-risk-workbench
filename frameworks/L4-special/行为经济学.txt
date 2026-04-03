@@ -1,0 +1,545 @@
+# L4 高级专题框架 - 行为经济学（Behavioral Economics）
+
+## 📌 框架定位
+
+**本质：** 从心理学和行为偏误角度理解用户决策
+
+**适用场景：**
+- 用户行为异常检测
+- 决策模式分析
+- 流失预警（行为偏离）
+- 欺诈检测（非理性行为）
+- 营销策略（行为nudge）
+
+**核心思想：**
+> "人不是完全理性的：
+> Bias（偏误）- 系统性偏差
+> Heuristics（启发式）- 快速决策规则
+> Framing（框架效应）- 表达方式影响
+> Loss Aversion（损失厌恶）- 损失>收益"
+
+---
+
+## 🎯 行为经济学四大类偏误
+
+### 类型1：认知偏误（Cognitive Biases）
+
+**核心问题：** 用户决策是否理性？有哪些偏误？
+
+#### 1.1 锚定效应（Anchoring Bias）
+
+**业务逻辑：**
+```
+锚定效应：第一印象影响后续决策
+- 首次购买价格 → 后续价格参照
+- 首次额度 → 期望额度
+```
+
+**特征设计：**
+
+```python
+anchoring_bias = {
+    # 锚点
+    'first_purchase_amount': '首次购买金额（锚点）',
+    'first_loan_amount': '首次贷款金额',
+    'initial_price_exposure': '初始价格接触',
+
+    # 偏离锚点
+    'current_vs_first_ratio': '当前金额/首次金额',
+    'anchor_drift': '锚点漂移（逐步偏离首次）',
+    'sudden_anchor_break': '突然脱锚（大幅偏离）',
+
+    # 价格锚定
+    'reference_price': '参考价格（心理锚点）',
+    'price_vs_reference': '实际价格/参考价格',
+    'anchor_sensitivity': '锚定敏感度'
+}
+```
+
+**业务应用：**
+```
+正常：当前金额 ≈ 首次金额±30%
+异常：当前金额 >> 首次金额（突然大额，欺诈风险）
+```
+
+---
+
+#### 1.2 可得性偏误（Availability Bias）
+
+**业务逻辑：**
+```
+可得性偏误：容易回忆的事件被高估
+- 最近事件 → 过度关注
+- 刷屏事件 → 跟风行为
+```
+
+**特征设计：**
+
+```python
+availability_bias = {
+    # 近因效应
+    'recency_weighted_avg': '近因加权平均（近期权重高）',
+    'recent_event_overweight': '最近事件过度反应',
+
+    # 跟风行为
+    'trend_following': '跟风标志（热点商品购买）',
+    'viral_product_purchase': '爆款商品购买',
+    'media_influenced_behavior': '媒体影响行为',
+
+    # 遗忘衰减
+    'memory_decay_rate': '记忆衰减率',
+    'long_term_event_ignored': '长期事件被忽略'
+}
+```
+
+---
+
+#### 1.3 确认偏误（Confirmation Bias）
+
+**业务逻辑：**
+```
+确认偏误：寻找证实自己观点的信息
+- 只看正面评价
+- 忽略警告信号
+```
+
+**特征设计：**
+
+```python
+confirmation_bias = {
+    # 选择性关注
+    'positive_review_only_read': '只看正面评价',
+    'ignore_warning_signals': '忽略警告信号',
+    'selective_information_seeking': '选择性信息搜索',
+
+    # 固执己见
+    'opinion_rigidity': '观点固化程度',
+    'resistant_to_negative_feedback': '抗拒负面反馈',
+
+    # 过度自信
+    'overconfidence_score': '过度自信评分',
+    'risk_underestimation': '风险低估'
+}
+```
+
+---
+
+### 类型2：决策启发式（Decision Heuristics）
+
+**核心问题：** 用户如何快速决策？
+
+#### 2.1 代表性启发式（Representativeness Heuristic）
+
+**业务逻辑：**
+```
+代表性启发式：基于相似性判断
+- 看起来像欺诈 → 判断为欺诈
+- 与某类用户相似 → 归为该类
+```
+
+**特征设计：**
+
+```python
+representativeness_heuristic = {
+    # 刻板印象
+    'stereotype_matching': '刻板印象匹配',
+    'category_quick_judgment': '类别快速判断',
+
+    # 忽略基础率
+    'base_rate_neglect': '基础率忽略',
+    'sample_size_neglect': '样本量忽略',
+
+    # 相似性判断
+    'similarity_based_decision': '基于相似性决策',
+    'pattern_matching_behavior': '模式匹配行为'
+}
+```
+
+---
+
+#### 2.2 可得性启发式（Availability Heuristic）
+
+**业务逻辑：**
+```
+可得性启发式：基于易得信息判断
+- 最近看到的 → 认为概率高
+- 媒体报道的 → 认为常见
+```
+
+**特征设计：**
+
+```python
+availability_heuristic = {
+    # 易得性
+    'recent_exposure_influence': '最近接触影响',
+    'vivid_event_overweight': '生动事件高估',
+
+    # 信息来源
+    'first_page_result_bias': '首页结果偏误',
+    'media_exposure_effect': '媒体曝光效应',
+
+    # 判断偏差
+    'probability_misjudgment': '概率误判',
+    'frequency_overestimation': '频率高估'
+}
+```
+
+---
+
+#### 2.3 情感启发式（Affect Heuristic）
+
+**业务逻辑：**
+```
+情感启发式：基于情感快速判断
+- 喜欢 → 低风险、高收益
+- 讨厌 → 高风险、低收益
+```
+
+**特征设计：**
+
+```python
+affect_heuristic = {
+    # 情感驱动
+    'emotion_driven_decision': '情感驱动决策',
+    'like_equals_low_risk': '喜欢=低风险判断',
+
+    # 情绪化购买
+    'impulse_buying': '冲动购买',
+    'emotional_spending': '情绪化消费',
+    'regret_purchase': '后悔购买',
+
+    # 情感vs理性
+    'emotion_vs_rational_ratio': '情感vs理性决策比率',
+    'hot_state_decision': '热状态决策（情绪化）',
+    'cold_state_decision': '冷状态决策（理性）'
+}
+```
+
+---
+
+### 类型3：损失厌恶与框架效应
+
+**核心问题：** 如何看待得失？
+
+#### 3.1 损失厌恶（Loss Aversion）
+
+**业务逻辑：**
+```
+损失厌恶：损失的痛苦 > 收益的快乐
+- 避免损失 > 追求收益
+- 保本倾向
+```
+
+**特征设计：**
+
+```python
+loss_aversion = {
+    # 损失反应
+    'loss_sensitivity': '损失敏感度',
+    'loss_avoidance_behavior': '损失规避行为',
+    'risk_averse_choice': '风险规避选择',
+
+    # 禀赋效应
+    'endowment_effect': '禀赋效应（持有>价值）',
+    'status_quo_bias': '现状偏误（不愿改变）',
+    'reluctance_to_sell': '不愿卖出',
+
+    # 沉没成本
+    'sunk_cost_fallacy': '沉没成本谬误',
+    'throw_good_money_after_bad': '继续投入亏损项目',
+    'persistence_in_losing': '持续亏损但不止损',
+
+    # 保本倾向
+    'breakeven_seeking': '保本倾向',
+    'avoid_realized_loss': '避免实现损失',
+    'hold_losing_position': '持有亏损头寸'
+}
+```
+
+**业务应用：**
+```
+流失预警：
+- 损失敏感度下降 → 不在乎沉没成本 → 流失风险
+- 保本倾向消失 → 态度转变 → 预警
+
+欺诈检测：
+- 无损失厌恶 → 不在乎损失 → 盗用账号
+```
+
+---
+
+#### 3.2 框架效应（Framing Effect）
+
+**业务逻辑：**
+```
+框架效应：表达方式影响决策
+- "90%成功率" vs "10%失败率"
+- "节省100元" vs "少花100元"
+```
+
+**特征设计：**
+
+```python
+framing_effect = {
+    # 框架敏感性
+    'framing_sensitivity': '框架敏感度',
+    'positive_frame_preference': '正面框架偏好',
+    'negative_frame_avoidance': '负面框架规避',
+
+    # 折扣框架
+    'discount_response': '折扣响应',
+    'percentage_vs_absolute': '百分比vs绝对值偏好',
+    # "省20%" vs "省100元"
+
+    # 得失框架
+    'gain_frame_response': '收益框架响应',
+    'loss_frame_response': '损失框架响应',
+
+    # 时间框架
+    'immediate_vs_delayed': '即时vs延迟偏好',
+    'short_term_focus': '短期关注'
+}
+```
+
+---
+
+### 类型4：时间不一致与自控问题
+
+**核心问题：** 跨期决策是否一致？
+
+#### 4.1 现时偏误（Present Bias）
+
+**业务逻辑：**
+```
+现时偏误：过度重视当前，轻视未来
+- 即时满足 > 延迟满足
+- 过度消费，储蓄不足
+```
+
+**特征设计：**
+
+```python
+present_bias = {
+    # 即时满足
+    'immediate_gratification': '即时满足倾向',
+    'delay_discounting_rate': '延迟折扣率',
+    'impatience_score': '不耐烦评分',
+
+    # 短视行为
+    'short_term_focus': '短期关注',
+    'future_neglect': '未来忽视',
+    'long_term_planning_absence': '缺乏长期规划',
+
+    # 过度消费
+    'overconsumption': '过度消费',
+    'undersaving': '储蓄不足',
+    'consumption_smoothing_failure': '消费平滑失败',
+
+    # 时间偏好变化
+    'time_preference_reversal': '时间偏好逆转',
+    'hyperbolic_discounting': '双曲折扣'
+}
+```
+
+**业务应用：**
+```
+信贷风控：
+- 现时偏误强 → 过度消费 → 还款能力弱
+- 延迟折扣率高 → 不重视未来 → 违约风险
+
+流失预警：
+- 短期关注 → 不考虑长期价值 → 易流失
+```
+
+---
+
+#### 4.2 自控失败（Self-Control Failure）
+
+**业务逻辑：**
+```
+自控失败：知道但做不到
+- 计划储蓄但总是花光
+- 计划运动但总是懒惰
+```
+
+**特征设计：**
+
+```python
+self_control_failure = {
+    # 计划vs执行
+    'intention_action_gap': '意图-行动差距',
+    'plan_execution_rate': '计划执行率',
+    'resolution_failure': '决心失败',
+
+    # 冲动控制
+    'impulse_control_score': '冲动控制评分',
+    'impulse_purchase_ratio': '冲动购买占比',
+    'unplanned_spending': '计划外消费',
+
+    # 自我约束
+    'self_imposed_limit_adherence': '自我限额遵守',
+    'budget_violation_cnt': '预算违反次数',
+    'commitment_device_usage': '承诺机制使用',
+
+    # 诱惑抵抗
+    'temptation_resistance': '诱惑抵抗力',
+    'self_control_depletion': '自控力耗竭',
+    'ego_depletion_signal': '自我损耗信号'
+}
+```
+
+---
+
+#### 4.3 拖延行为（Procrastination）
+
+**业务逻辑：**
+```
+拖延：知道该做但推迟
+- 账单拖到最后一天还
+- 注册拖着不完成
+```
+
+**特征设计：**
+
+```python
+procrastination = {
+    # 拖延程度
+    'procrastination_score': '拖延评分',
+    'task_delay_avg': '任务平均延迟',
+    'deadline_proximity_action': '临近截止才行动',
+
+    # 拖延模式
+    'last_minute_payment': '最后一刻还款',
+    'registration_delay': '注册拖延',
+    'decision_postponement': '决策推迟',
+
+    # 拖延后果
+    'late_fee_incurred': '产生滞纳金',
+    'missed_opportunity': '错过机会',
+    'rushed_decision': '仓促决策'
+}
+```
+
+---
+
+## 🔄 行为经济学综合应用
+
+### 应用1：行为异常检测
+
+**检测逻辑：**
+
+```python
+def detect_behavioral_anomalies(user_behavior):
+    """行为异常检测（基于行为经济学）"""
+    anomalies = []
+
+    # 异常1：损失厌恶消失（账号被盗特征）
+    if user_behavior['loss_aversion_score'] < 0.3:
+        anomalies.append('loss_aversion_disappeared')
+
+    # 异常2：锚点突然脱锚（消费突然大额）
+    if user_behavior['current_vs_first_ratio'] > 5:
+        anomalies.append('anchor_sudden_break')
+
+    # 异常3：自控力完全失控（过度消费）
+    if user_behavior['impulse_purchase_ratio'] > 0.8:
+        anomalies.append('self_control_total_failure')
+
+    # 异常4：理性决策消失（纯情感驱动）
+    if user_behavior['emotion_driven_ratio'] > 0.9:
+        anomalies.append('purely_emotional_decision')
+
+    return {
+        'anomaly_types': anomalies,
+        'anomaly_cnt': len(anomalies),
+        'is_suspicious': (len(anomalies) >= 2)
+    }
+```
+
+---
+
+### 应用2：用户决策类型识别
+
+**用户分类：**
+
+```python
+def classify_decision_style(user_features):
+    """用户决策风格分类"""
+
+    # 类型1：理性决策者
+    if (user_features['rational_decision_ratio'] > 0.7 and
+        user_features['impulse_control_score'] > 0.7):
+        return 'rational_decision_maker'
+
+    # 类型2：情感决策者
+    elif user_features['emotion_driven_ratio'] > 0.7:
+        return 'emotional_decision_maker'
+
+    # 类型3：冲动消费者
+    elif user_features['impulse_purchase_ratio'] > 0.6:
+        return 'impulse_buyer'
+
+    # 类型4：拖延者
+    elif user_features['procrastination_score'] > 0.7:
+        return 'procrastinator'
+
+    # 类型5：损失厌恶者
+    elif user_features['loss_aversion_score'] > 0.8:
+        return 'loss_averse'
+
+    else:
+        return 'balanced_decision_maker'
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用行为经济学？
+
+**触发条件：**
+1. 用户说"想理解用户决策逻辑"
+2. 用户的目标是"异常检测/流失预警"
+3. 用户的数据有决策序列（购买/还款/使用）
+4. 用户说"用户行为不理性"
+
+**引导话术：**
+```
+CHRIS: 我看到你想理解用户的决策模式，可以用"行为经济学"
+       从心理学角度分析。
+
+       🧠 行为经济学关注4类偏误：
+       1. 认知偏误 - 锚定效应、可得性偏误
+       2. 决策启发式 - 快速决策规则
+       3. 损失厌恶 - 框架效应、禀赋效应
+       4. 时间不一致 - 现时偏误、自控失败
+
+       💡 这些特征特别适合：
+       - 异常检测（行为突然变理性/不理性）
+       - 流失预警（损失厌恶消失）
+       - 风险评估（冲动控制弱）
+
+       🤔 你观察到哪些不理性行为？
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用行为经济学时：**
+
+- [ ] 是否识别了认知偏误？
+- [ ] 是否检测了损失厌恶？
+- [ ] 是否分析了冲动控制？
+- [ ] 是否识别了决策风格？
+- [ ] 是否检测了行为异常？
+
+**记住：**
+> "人不是完全理性的。
+> 理解偏误，就能理解行为。"
+
+---
+
+**CHRIS Feature Engineering System**
+L4 高级专题框架 - 行为经济学
+版本 3.0 | 2025年1月

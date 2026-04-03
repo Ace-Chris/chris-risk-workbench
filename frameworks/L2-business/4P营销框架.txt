@@ -1,0 +1,721 @@
+# L2 核心业务框架 - 4P营销框架（4P Marketing Mix）
+
+## 📌 框架定位
+
+**本质：** 经典营销框架，从产品视角分析用户行为和偏好
+
+**适用场景：**
+- 电商/零售特征工程
+- 用户画像与分群
+- 推荐系统特征设计
+- 营销响应预测
+- 商品/服务类业务的用户分析
+
+**核心思想：**
+> "用户行为可以从4个维度理解：
+> Product（产品）- 买什么？喜欢什么？
+> Price（价格）- 对价格敏感吗？
+> Place（渠道）- 在哪买？通过什么渠道？
+> Promotion（促销）- 对什么促销敏感？"
+
+---
+
+## 🎯 4P四维度详解
+
+### P1 - Product（产品偏好）
+
+**核心问题：** 用户买什么？喜欢什么类型的产品？
+
+**业务逻辑：**
+```
+产品偏好体现：
+├─ 用户需求（刚需 vs 非刚需）
+├─ 消费品味（高端 vs 低端）
+├─ 品类偏好（垂直 vs 广泛）
+└─ 品牌偏好（品牌忠诚 vs 无所谓）
+```
+
+---
+
+#### 1.1 品类偏好特征（Category Preference）
+
+**特征设计：**
+
+```python
+product_category = {
+    # 品类购买
+    'total_category_cnt': '购买品类总数',
+    'active_category_cnt': '近30天活跃品类数',
+    'top1_category': '第一大品类',
+    'top1_category_ratio': '第一大品类占比',
+    'top3_category_ratio': '前三大品类占比',
+
+    # 品类多样性
+    'category_diversity': '品类多样性（熵）',
+    'category_concentration': '品类集中度（HHI）',
+    'category_gini': '品类基尼系数',
+
+    # 品类特征
+    'luxury_category_ratio': '奢侈品类占比',
+    'necessity_category_ratio': '必需品类占比',
+    'impulse_category_ratio': '冲动消费品类占比',
+
+    # 品类趋势
+    'category_expansion_trend': '品类扩展趋势（品类数增长）',
+    'new_category_try_rate': '新品类尝试率',
+    'category_loyalty': '品类忠诚度（重复购买率）',
+
+    # 品类风险（信贷场景）
+    'high_risk_category_ratio': '高风险品类占比（博彩/奢侈品）',
+    'cash_intensive_category': '现金密集型品类（加油/超市）'
+}
+```
+
+**品类偏好画像：**
+```
+品类宽度 × 品类深度：
+├─ 宽而浅：购买品类多，但每个品类购买少（尝鲜型用户）
+├─ 宽而深：购买品类多，每个品类都购买多（重度用户）
+├─ 窄而深：只购买少数品类，但购买频次高（专注型用户）
+└─ 窄而浅：购买品类少，购买频次也低（轻度用户）
+```
+
+---
+
+#### 1.2 商品属性偏好（Product Attribute Preference）
+
+**特征设计：**
+
+```python
+product_attribute = {
+    # 价格段偏好
+    'avg_product_price': '平均商品单价',
+    'price_range_preference': '偏好价格区间',
+    'high_price_ratio': '高价商品占比（>500元）',
+    'low_price_ratio': '低价商品占比（<50元）',
+
+    # 品质偏好
+    'premium_product_ratio': '高端商品占比',
+    'economy_product_ratio': '经济型商品占比',
+    'product_quality_score': '购买商品平均质量评分',
+
+    # 品牌偏好
+    'branded_product_ratio': '品牌商品占比',
+    'luxury_brand_cnt': '奢侈品牌购买数',
+    'brand_loyalty_score': '品牌忠诚度',
+    'top1_brand_concentration': '单一品牌集中度',
+
+    # 商品新旧
+    'new_product_ratio': '新品购买占比',
+    'classic_product_ratio': '经典款购买占比',
+    'early_adopter_score': '新品尝鲜者评分',
+
+    # 商品类型
+    'digital_product_ratio': '数字商品占比',
+    'physical_product_ratio': '实物商品占比',
+    'service_product_ratio': '服务类商品占比'
+}
+```
+
+---
+
+#### 1.3 产品生命周期特征（Product Lifecycle）
+
+**特征设计：**
+
+```python
+product_lifecycle = {
+    # 产品阶段偏好
+    'launch_stage_ratio': '购买导入期产品占比',
+    'growth_stage_ratio': '购买成长期产品占比',
+    'mature_stage_ratio': '购买成熟期产品占比',
+    'decline_stage_ratio': '购买衰退期产品占比',
+
+    # 产品创新性
+    'innovative_product_ratio': '创新产品购买占比',
+    'traditional_product_ratio': '传统产品购买占比',
+
+    # 风险偏好
+    'product_risk_appetite': '产品风险偏好（买新品多 = 风险偏好高）'
+}
+```
+
+---
+
+### P2 - Price（价格敏感度）
+
+**核心问题：** 用户对价格敏感吗？什么价格段？
+
+**业务逻辑：**
+```
+价格敏感度体现：
+├─ 支付能力（能花多少钱）
+├─ 支付意愿（愿意花多少钱）
+├─ 价格弹性（涨价会不会跑）
+└─ 促销响应（打折才买 vs 无所谓）
+```
+
+---
+
+#### 2.1 价格水平特征（Price Level）
+
+**特征设计：**
+
+```python
+price_level = {
+    # 绝对价格
+    'avg_order_value': '平均客单价',
+    'median_order_value': '中位数客单价',
+    'max_order_value': '历史最大单笔金额',
+    'min_order_value': '历史最小单笔金额',
+    'total_spending': '总消费金额',
+
+    # 相对价格
+    'aov_vs_income': '客单价/月收入',
+    'aov_vs_platform_avg': '客单价/平台平均',
+    'aov_percentile': '客单价分位数',
+
+    # 价格趋势
+    'aov_trend': '客单价趋势（增长/下降）',
+    'aov_growth_rate': '客单价增长率',
+    'spending_growth_rate': '消费金额增长率',
+
+    # 价格分段
+    'price_segment': '价格分段（低/中/高消费者）',
+    'is_high_value_customer': '是否高价值客户（客单价>75分位数）',
+    'is_whale_customer': '是否鲸鱼客户（客单价>95分位数）'
+}
+```
+
+---
+
+#### 2.2 价格敏感度特征（Price Sensitivity）
+
+**特征设计：**
+
+```python
+price_sensitivity = {
+    # 比价行为
+    'compare_price_cnt': '比价次数',
+    'compare_price_ratio': '比价率 = 比价次数 / 浏览次数',
+    'cross_platform_compare': '跨平台比价行为',
+
+    # 等待折扣
+    'wait_for_discount_cnt': '等待折扣次数（加购不买，等打折）',
+    'discount_buy_ratio': '折扣购买率 = 折扣时购买 / 总购买',
+    'only_buy_on_sale': '仅在促销时购买标志',
+
+    # 价格弹性
+    'price_elasticity': '价格弹性（价格变化 vs 购买量变化）',
+    'churn_on_price_increase': '涨价后流失标志',
+
+    # 议价行为
+    'bargain_cnt': '议价次数',
+    'bargain_success_rate': '议价成功率',
+
+    # 价格敏感度评分
+    'price_sensitivity_score': '价格敏感度综合评分',
+    # 高分 = 对价格敏感（比价多、只买打折）
+    # 低分 = 对价格不敏感（直接买、买高价）
+
+    # 价格锚定
+    'price_anchor': '价格锚点（用户能接受的价格上限）',
+    'willingness_to_pay': '支付意愿（最高支付价格）'
+}
+```
+
+---
+
+#### 2.3 支付行为特征（Payment Behavior）
+
+**特征设计：**
+
+```python
+payment_behavior = {
+    # 支付方式
+    'payment_method_diversity': '支付方式多样性',
+    'credit_payment_ratio': '信用支付占比（花呗/白条）',
+    'debit_payment_ratio': '借记卡支付占比',
+    'cash_payment_ratio': '现金支付占比',
+
+    # 分期行为
+    'installment_cnt': '分期次数',
+    'installment_ratio': '分期率 = 分期订单 / 总订单',
+    'avg_installment_months': '平均分期月数',
+    'installment_for_small_amount': '小额分期标志（<1000元也分期）',
+
+    # 支付时效
+    'payment_delay_days': '平均支付延迟天数',
+    'immediate_payment_ratio': '即时支付率（<5分钟）',
+    'payment_abandon_rate': '支付放弃率',
+
+    # 支付能力
+    'payment_capacity_score': '支付能力评分',
+    'frequent_installment_flag': '频繁分期标志（支付能力弱）',
+    'payment_struggle_signal': '支付吃力信号'
+}
+```
+
+---
+
+### P3 - Place（渠道偏好）
+
+**核心问题：** 用户在哪买？通过什么渠道？
+
+**业务逻辑：**
+```
+渠道偏好体现：
+├─ 渠道选择（线上 vs 线下）
+├─ 平台忠诚度（单一平台 vs 多平台）
+├─ 渠道切换（稳定 vs 多变）
+└─ 入口偏好（搜索 vs 推荐 vs 直达）
+```
+
+---
+
+#### 3.1 线上/线下渠道特征（Online/Offline Channel）
+
+**特征设计：**
+
+```python
+channel_online_offline = {
+    # 渠道分布
+    'online_txn_ratio': '线上交易占比',
+    'offline_txn_ratio': '线下交易占比',
+    'o2o_txn_ratio': 'O2O交易占比',
+
+    # 渠道偏好
+    'channel_preference': '渠道偏好（线上为主/线下为主/混合）',
+    'pure_online_user': '纯线上用户标志',
+    'omni_channel_user': '全渠道用户标志',
+
+    # 渠道切换
+    'channel_switch_cnt': '渠道切换次数',
+    'channel_loyalty': '渠道忠诚度',
+
+    # 场景特征
+    'in_store_pickup_ratio': '到店自提占比',
+    'home_delivery_ratio': '送货上门占比'
+}
+```
+
+---
+
+#### 3.2 平台/设备渠道特征（Platform/Device Channel）
+
+**特征设计：**
+
+```python
+channel_platform_device = {
+    # 平台渠道
+    'platform_diversity': '平台多样性（用几个电商平台）',
+    'platform_concentration': '平台集中度（单一平台占比）',
+    'platform_loyalty_score': '平台忠诚度',
+    'multi_platform_compare': '多平台比价行为',
+
+    # 设备渠道
+    'mobile_txn_ratio': '移动端交易占比',
+    'pc_txn_ratio': 'PC端交易占比',
+    'device_preference': '设备偏好',
+
+    # APP使用
+    'app_txn_ratio': 'APP交易占比',
+    'web_txn_ratio': '网页交易占比',
+    'mini_program_txn_ratio': '小程序交易占比',
+
+    # 设备切换
+    'device_switch_frequency': '设备切换频率',
+    'cross_device_behavior': '跨设备行为'
+}
+```
+
+---
+
+#### 3.3 流量来源特征（Traffic Source）
+
+**特征设计：**
+
+```python
+channel_traffic_source = {
+    # 流量来源
+    'direct_traffic_ratio': '直接访问占比',
+    'search_traffic_ratio': '搜索流量占比',
+    'social_traffic_ratio': '社交流量占比',
+    'ad_traffic_ratio': '广告流量占比',
+    'referral_traffic_ratio': '推荐流量占比',
+
+    # 入口偏好
+    'search_entry_ratio': '搜索入口占比（主动需求）',
+    'recommendation_entry_ratio': '推荐入口占比（被动发现）',
+    'direct_entry_ratio': '直达入口占比（目的明确）',
+
+    # 流量质量
+    'organic_traffic_ratio': '自然流量占比',
+    'paid_traffic_ratio': '付费流量占比',
+    'high_intent_traffic_ratio': '高意向流量占比',
+
+    # 营销响应
+    'ad_click_through_rate': '广告点击率',
+    'ad_conversion_rate': '广告转化率',
+    'marketing_responsive_score': '营销响应度评分'
+}
+```
+
+---
+
+### P4 - Promotion（促销敏感度）
+
+**核心问题：** 用户对什么促销敏感？促销响应如何？
+
+**业务逻辑：**
+```
+促销敏感度体现：
+├─ 促销参与度（参与多少促销）
+├─ 促销依赖度（只在促销时买 vs 平时也买）
+├─ 促销类型偏好（折扣 vs 满减 vs 赠品）
+└─ 促销效果（促销能否提升消费）
+```
+
+---
+
+#### 4.1 促销参与特征（Promotion Participation）
+
+**特征设计：**
+
+```python
+promotion_participation = {
+    # 参与度
+    'promo_order_cnt': '促销订单次数',
+    'promo_order_ratio': '促销订单占比 = 促销订单 / 总订单',
+    'promo_amount_ratio': '促销金额占比',
+
+    # 促销类型
+    'discount_promo_cnt': '折扣促销参与次数',
+    'cashback_promo_cnt': '返现促销参与次数',
+    'gift_promo_cnt': '赠品促销参与次数',
+    'bundle_promo_cnt': '组合促销参与次数',
+    'coupon_usage_cnt': '优惠券使用次数',
+
+    # 促销多样性
+    'promo_type_diversity': '促销类型多样性',
+    'promo_type_preference': '偏好促销类型',
+
+    # 大促参与
+    'major_promo_participation': '大促参与次数（618/双11）',
+    'major_promo_spending': '大促消费金额',
+    'major_promo_dependency': '大促依赖度（大促消费/总消费）'
+}
+```
+
+---
+
+#### 4.2 促销敏感度特征（Promotion Sensitivity）
+
+**特征设计：**
+
+```python
+promotion_sensitivity = {
+    # 促销依赖
+    'only_buy_on_promo': '仅在促销时购买标志',
+    'promo_dependency_score': '促销依赖度评分',
+    'wait_for_promo_behavior': '等待促销行为（加购不买，等活动）',
+
+    # 促销响应
+    'promo_response_rate': '促销响应率（收到促销→购买）',
+    'promo_conversion_rate': '促销转化率',
+    'promo_lift': '促销提升效果（促销时购买 vs 平时购买）',
+
+    # 价格敏感度（通过促销行为反映）
+    'discount_threshold': '折扣阈值（多少折扣才买）',
+    'min_discount_rate': '最小折扣率（能忍受的最小优惠）',
+    'discount_elasticity': '折扣弹性（折扣力度 vs 购买量）',
+
+    # 优惠券行为
+    'coupon_collection_cnt': '优惠券领取次数',
+    'coupon_usage_rate': '优惠券使用率 = 使用数 / 领取数',
+    'coupon_stacking': '优惠券叠加使用（薅羊毛特征）',
+    'coupon_arbitrage': '优惠券套利行为'
+}
+```
+
+---
+
+#### 4.3 促销策略响应特征（Promotion Strategy Response）
+
+**特征设计：**
+
+```python
+promotion_strategy = {
+    # 折扣策略
+    'discount_responsive': '折扣响应度',
+    'deep_discount_only': '仅对深度折扣响应（>50%）',
+    'any_discount_responsive': '任何折扣都响应',
+
+    # 满减策略
+    'full_reduction_responsive': '满减响应度',
+    'buy_more_for_threshold': '为凑满减多买行为',
+    'split_order_to_maximize': '拆单凑多个满减',
+
+    # 限时促销
+    'flash_sale_participation': '限时抢购参与次数',
+    'urgency_responsive': '紧迫性响应（限时限量敏感）',
+
+    # 会员促销
+    'member_exclusive_promo_usage': '会员专享促销使用',
+    'member_day_participation': '会员日参与',
+
+    # 社交促销
+    'group_buy_participation': '拼团参与次数',
+    'referral_promo_usage': '推荐返利使用',
+    'social_sharing_for_promo': '为促销分享社交媒体',
+
+    # 促销效果
+    'promo_incremental_spending': '促销增量消费',
+    'promo_roi': '促销ROI（促销成本 vs 增量收入）'
+}
+```
+
+---
+
+## 🔄 4P综合应用模式
+
+### 模式1：4P用户画像
+
+**核心思想：** 从4P维度全面刻画用户
+
+**用户画像示例：**
+
+```
+用户A的4P画像：
+【Product】
+- 品类偏好：数码产品为主（60%），服装次之（30%）
+- 品牌偏好：偏好中高端品牌，品牌忠诚度高
+- 新品尝鲜：早期采用者，喜欢买新品
+
+【Price】
+- 价格水平：平均客单价800元，属于中高端消费者
+- 价格敏感度：中等，会比价但不完全依赖促销
+- 支付能力：支付能力强，很少分期
+
+【Place】
+- 渠道偏好：纯线上用户，95%在移动端购买
+- 平台忠诚度：中等，在2-3个平台购买
+- 流量来源：主要通过搜索和推荐
+
+【Promotion】
+- 促销参与：积极参与，但不依赖促销
+- 促销类型：偏好折扣和赠品
+- 促销响应：大促必参与，平时也会买
+
+综合定位：中高端、理性、活跃用户
+营销策略：推荐高端新品+会员专享+适度促销
+```
+
+---
+
+### 模式2：4P用户分群
+
+**核心思想：** 基于4P组合对用户分群
+
+**典型用户群：**
+
+#### 群组1：价格敏感型
+```
+【Product】低端品类为主，无品牌偏好
+【Price】低客单价，价格敏感度极高
+【Place】多平台比价
+【Promotion】仅在促销时购买
+
+营销策略：频繁促销、低价爆款、满减活动
+```
+
+#### 群组2：品质追求型
+```
+【Product】高端品类，品牌忠诚度高
+【Price】高客单价，价格不敏感
+【Place】平台忠诚度高
+【Promotion】不依赖促销，但大促也参与
+
+营销策略：高端新品首发、会员专享、服务增值
+```
+
+#### 群组3：薅羊毛型
+```
+【Product】品类广泛，无特定偏好
+【Price】低客单价，极度价格敏感
+【Place】多平台切换
+【Promotion】仅促销时购买，优惠券套利
+
+风控策略：限制优惠、提高门槛、防止套利
+```
+
+#### 群组4：便利优先型
+```
+【Product】必需品为主
+【Price】中等客单价，价格敏感度低
+【Place】单一平台，移动端为主
+【Promotion】促销响应一般
+
+营销策略：便利服务、快速配送、会员体系
+```
+
+---
+
+### 模式3：4P特征交叉
+
+**核心思想：** 4P维度交叉产生强特征
+
+#### Product × Price 交叉
+```python
+product_price_cross = {
+    # 产品价格匹配
+    'luxury_product_with_low_price': '买奢侈品类但客单价低（仿品风险）',
+    'economy_product_with_high_price': '买经济品类但客单价高（异常）',
+
+    # 产品与支付能力匹配
+    'product_tier_vs_payment_capacity': '产品档次 vs 支付能力匹配度',
+    'upward_consumption': '向上消费（买超出能力的商品）',
+
+    # 产品与价格敏感度
+    'luxury_but_price_sensitive': '买奢侈品但价格敏感（矛盾）',
+    'economy_but_price_insensitive': '买经济品但不在乎价格（正常）'
+}
+```
+
+#### Product × Promotion 交叉
+```python
+product_promotion_cross = {
+    # 产品促销响应
+    'luxury_promo_response': '奢侈品促销响应（品牌粉 vs 机会主义）',
+    'necessity_promo_response': '必需品促销响应（囤货行为）',
+
+    # 产品与促销依赖
+    'luxury_only_on_promo': '仅在促销时买奢侈品（假需求）',
+    'necessity_only_on_promo': '仅在促销时买必需品（极度价格敏感）'
+}
+```
+
+#### Price × Place 交叉
+```python
+price_place_cross = {
+    # 价格与渠道
+    'high_price_but_multi_platform': '高客单价但多平台（不合理）',
+    'low_price_but_single_platform': '低客单价但单一平台（忠诚）',
+
+    # 支付与渠道
+    'frequent_installment_multi_channel': '频繁分期+多渠道（资金压力）',
+    'online_offline_price_difference': '线上线下价格差异利用'
+}
+```
+
+#### Place × Promotion 交叉
+```python
+place_promotion_cross = {
+    # 渠道与促销
+    'multi_platform_for_promo': '为促销切换平台（羊毛党）',
+    'loyal_platform_ignore_promo': '平台忠诚不在乎促销（真爱粉）',
+
+    # 流量与促销
+    'ad_traffic_promo_only': '广告流量仅在促销时转化',
+    'organic_traffic_promo_boost': '自然流量促销提升效果'
+}
+```
+
+---
+
+### 模式4：4P动态演化
+
+**核心思想：** 追踪用户4P特征的变化趋势
+
+```python
+4p_evolution = {
+    # Product演化
+    'product_upgrade_trend': '产品升级趋势（买的越来越高端）',
+    'product_downgrade_trend': '产品降级趋势（消费降级）',
+    'category_expansion': '品类扩展（品类越来越多）',
+
+    # Price演化
+    'aov_growth_trend': '客单价增长趋势',
+    'price_sensitivity_change': '价格敏感度变化',
+    'payment_capacity_change': '支付能力变化',
+
+    # Place演化
+    'channel_loyalty_change': '渠道忠诚度变化',
+    'platform_switching_increase': '平台切换增加（流失风险）',
+    'online_offline_shift': '线上线下迁移',
+
+    # Promotion演化
+    'promo_dependency_increase': '促销依赖度增加（价格敏感度提升）',
+    'promo_response_decline': '促销响应下降（促销疲劳）',
+
+    # 综合健康度
+    '4p_health_score': '4P健康度评分（是否良性发展）'
+}
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用4P框架？
+
+**触发条件：**
+1. 用户的业务是电商/零售/消费类
+2. 用户的数据有商品/交易信息
+3. 用户的目标是"用户分群/画像/推荐/营销"
+4. 用户说"不知道从什么角度分析用户"
+
+**引导话术：**
+```
+CHRIS: 我看到你的业务是电商，用户有购买行为数据，
+       这个场景非常适合用"4P营销框架"来分析用户。
+
+       🛍️ 4P框架从4个维度理解用户：
+       1. Product（产品） - 用户买什么？喜欢什么？
+       2. Price（价格） - 用户对价格敏感吗？
+       3. Place（渠道） - 用户在哪买？通过什么渠道？
+       4. Promotion（促销） - 用户对什么促销敏感？
+
+       📊 根据你的数据，我初步判断可以提取：
+       【Product】
+       - 品类偏好、品牌偏好、商品属性偏好
+       【Price】
+       - 客单价水平、价格敏感度、支付能力
+       【Place】
+       - 渠道偏好、平台忠诚度、流量来源
+       【Promotion】
+       - 促销参与度、促销依赖度、促销类型偏好
+
+       💡 基于4P，我们可以：
+       1. 用户画像（从4P维度全面刻画用户）
+       2. 用户分群（价格敏感型/品质追求型/便利优先型）
+       3. 精准营销（不同4P画像不同策略）
+       4. 流失预警（4P特征恶化 = 流失风险）
+
+       🤔 你想从哪个P开始？
+       还是我帮你设计完整的4P特征体系？
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用4P框架时：**
+
+- [ ] 是否覆盖了全部4个P？
+- [ ] 是否设计了4P的交叉特征？
+- [ ] 是否追踪了4P的动态变化？
+- [ ] 是否基于4P进行了用户分群？
+- [ ] 是否根据4P制定了差异化策略？
+
+**记住：**
+> "4P不是孤立的4个维度，而是相互关联的整体。
+> Product决定了目标用户，Price反映了支付能力，
+> Place体现了购买习惯，Promotion显示了价格敏感度。
+> 4P综合才能全面理解用户。"
+
+---
+
+**CHRIS Feature Engineering System**
+L2 核心业务框架 - 4P营销框架
+版本 3.0 | 2025年1月

@@ -1,0 +1,624 @@
+# L3 数据形态框架 - 行为序列（Behavioral Sequences）
+
+## 📌 框架定位
+
+**本质：** 从行为发生的顺序和模式中挖掘特征
+
+**适用场景：**
+- 用户行为路径分析
+- 欺诈检测（异常行为序列）
+- 转化漏斗分析
+- 用户意图识别
+- 生命周期阶段判断
+- 推荐系统（下一步预测）
+
+**核心思想：**
+> "行为不是孤立的点，而是连续的序列：
+> Pattern（模式）- 典型行为路径
+> Transition（转移）- 状态变化规律
+> Consistency（一致性）- 行为连贯性
+> Anomaly（异常）- 序列断裂/突变"
+
+---
+
+## 🎯 行为序列四维度详解
+
+### 维度1：Pattern（序列模式）
+
+**核心问题：** 典型行为路径是什么？
+
+**业务逻辑：**
+```
+序列模式体现用户意图：
+- 正常路径：浏览→加购→支付（转化）
+- 异常路径：直接支付（无浏览）→ 欺诈？
+- 流失路径：浏览→加购→放弃
+- 薅羊毛路径：领券→购买→退货
+```
+
+---
+
+#### 1.1 序列长度特征
+
+**特征设计：**
+
+```python
+sequence_length = {
+    # 序列长度
+    'sequence_length': '行为序列总长度',
+    'unique_actions': '不重复行为数',
+    'action_diversity': '行为多样性 = unique / total',
+
+    # 长度分段
+    'short_sequence': '短序列标志（<5步）',
+    'medium_sequence': '中序列标志（5-20步）',
+    'long_sequence': '长序列标志（>20步）',
+
+    # 相对长度
+    'sequence_length_vs_avg': '序列长度 / 平均长度',
+    'sequence_length_percentile': '序列长度分位数',
+
+    # 子序列
+    'subsequence_cnt': '子序列数量（按会话切分）',
+    'avg_subsequence_length': '平均子序列长度'
+}
+```
+
+---
+
+#### 1.2 N-Gram特征（连续行为模式）
+
+**特征设计：**
+
+```python
+ngram_features = {
+    # Bigram（2-gram）连续2个行为
+    'bigram_pattern': '2元组模式（A→B）',
+    'most_common_bigram': '最常见2元组',
+    'bigram_diversity': '2元组多样性',
+
+    # 示例
+    'browse_to_cart': '浏览→加购次数',
+    'cart_to_purchase': '加购→购买次数',
+    'purchase_to_refund': '购买→退货次数',
+
+    # Trigram（3-gram）连续3个行为
+    'trigram_pattern': '3元组模式（A→B→C）',
+    'most_common_trigram': '最常见3元组',
+
+    # 示例
+    'browse_cart_purchase': '浏览→加购→购买（标准路径）',
+    'browse_purchase_direct': '浏览→购买（跳过加购）',
+    'purchase_refund_repurchase': '购买→退货→再购买'
+}
+```
+
+**计算示例：**
+```python
+from collections import Counter
+
+def extract_ngram_features(action_sequence, n=2):
+    """提取N-gram特征"""
+    # 生成N-gram
+    ngrams = [tuple(action_sequence[i:i+n]) for i in range(len(action_sequence)-n+1)]
+
+    # 计数
+    ngram_counts = Counter(ngrams)
+
+    # 最常见N-gram
+    most_common = ngram_counts.most_common(1)[0] if ngrams else None
+
+    # 多样性
+    diversity = len(ngram_counts) / len(ngrams) if ngrams else 0
+
+    # 特定模式
+    browse_to_cart = ngram_counts.get(('browse', 'add_to_cart'), 0)
+    cart_to_purchase = ngram_counts.get(('add_to_cart', 'purchase'), 0)
+
+    return {
+        'most_common_bigram': most_common[0] if most_common else None,
+        'bigram_diversity': diversity,
+        'browse_to_cart': browse_to_cart,
+        'cart_to_purchase': cart_to_purchase
+    }
+```
+
+---
+
+#### 1.3 序列模板匹配
+
+**特征设计：**
+
+```python
+sequence_template = {
+    # 标准路径匹配
+    'standard_path_match': '匹配标准路径标志',
+    'path_completion_rate': '路径完成度 = 实际步数 / 标准步数',
+
+    # 关键步骤
+    'has_key_action_1': '是否包含关键动作1',
+    'has_key_action_2': '是否包含关键动作2',
+    'key_action_completion': '关键动作完成数 / 总关键动作数',
+
+    # 路径偏离
+    'path_deviation': '路径偏离度（与标准路径的编辑距离）',
+    'skip_important_step': '跳过重要步骤标志',
+
+    # 异常路径
+    'abnormal_path_flag': '异常路径标志',
+    'fraud_path_similarity': '与欺诈路径相似度',
+    'churn_path_similarity': '与流失路径相似度'
+}
+```
+
+---
+
+### 维度2：Transition（状态转移）
+
+**核心问题：** 状态如何转换？转移规律是什么？
+
+**业务逻辑：**
+```
+状态转移体现用户决策：
+- 浏览→购买：高转化
+- 浏览→离开：流失
+- 活跃→沉默：预警
+- 正常→异常：风险
+```
+
+---
+
+#### 2.1 状态转移概率
+
+**特征设计：**
+
+```python
+transition_probability = {
+    # 转移概率
+    'state_A_to_B_prob': '从状态A转到状态B的概率',
+    'conversion_probability': '转化概率 = P(购买|加购)',
+    'churn_probability': '流失概率 = P(离开|浏览)',
+
+    # 转移矩阵特征
+    'most_likely_next_state': '最可能的下一状态',
+    'transition_entropy': '转移熵（转移的随机性）',
+    'stable_transition': '稳定转移标志（低熵）',
+
+    # 反向转移
+    'backward_transition_cnt': '反向转移次数（回退）',
+    'loop_transition_cnt': '循环转移次数（A→B→A）'
+}
+```
+
+**计算示例：**
+```python
+import numpy as np
+
+def calculate_transition_matrix(sequences):
+    """计算状态转移矩阵"""
+    # 所有状态
+    states = sorted(set([s for seq in sequences for s in seq]))
+    state_to_idx = {s: i for i, s in enumerate(states)}
+
+    # 初始化转移矩阵
+    n = len(states)
+    transition_matrix = np.zeros((n, n))
+
+    # 统计转移
+    for seq in sequences:
+        for i in range(len(seq)-1):
+            from_state = state_to_idx[seq[i]]
+            to_state = state_to_idx[seq[i+1]]
+            transition_matrix[from_state, to_state] += 1
+
+    # 归一化（转为概率）
+    row_sums = transition_matrix.sum(axis=1, keepdims=True)
+    transition_matrix = np.divide(transition_matrix, row_sums,
+                                   where=row_sums!=0)
+
+    return transition_matrix, states
+```
+
+---
+
+#### 2.2 转移时间特征
+
+**特征设计：**
+
+```python
+transition_timing = {
+    # 转移间隔
+    'avg_transition_time': '平均转移间隔时间',
+    'median_transition_time': '中位数转移间隔',
+    'min_transition_time': '最小转移间隔（最快决策）',
+    'max_transition_time': '最大转移间隔（最慢决策）',
+
+    # 快速转移
+    'instant_transition_cnt': '即时转移次数（<1分钟）',
+    'instant_transition_ratio': '即时转移占比',
+    'too_fast_flag': '转移过快标志（机器行为）',
+
+    # 慢速转移
+    'long_pause_cnt': '长暂停次数（>1小时）',
+    'hesitation_time': '犹豫时间（加购到购买的间隔）',
+
+    # 时间模式
+    'regular_transition_time': '规律转移时间标志',
+    'transition_time_volatility': '转移时间波动性'
+}
+```
+
+---
+
+#### 2.3 关键转移特征
+
+**特征设计：**
+
+```python
+key_transitions = {
+    # 转化漏斗
+    'browse_to_cart_rate': '浏览→加购转化率',
+    'cart_to_purchase_rate': '加购→购买转化率',
+    'overall_conversion_rate': '整体转化率（浏览→购买）',
+    'funnel_drop_rate': '漏斗流失率',
+
+    # 流失点
+    'drop_at_browse': '浏览阶段流失标志',
+    'drop_at_cart': '加购阶段流失标志',
+    'drop_at_payment': '支付阶段流失标志',
+
+    # 异常转移
+    'skip_browse_direct_buy': '跳过浏览直接购买（异常）',
+    'buy_without_cart': '不加购直接购买',
+    'frequent_add_remove_cart': '频繁加购移除（犹豫）'
+}
+```
+
+---
+
+### 维度3：Consistency（序列一致性）
+
+**核心问题：** 行为连贯吗？前后一致吗？
+
+**业务逻辑：**
+```
+一致性体现真实性：
+- 高一致性：真实用户（行为连贯）
+- 低一致性：异常用户（行为混乱/机器）
+```
+
+---
+
+#### 3.1 顺序一致性
+
+**特征设计：**
+
+```python
+sequence_consistency = {
+    # 逻辑一致性
+    'logical_sequence': '逻辑序列标志（符合常理）',
+    'illogical_sequence_cnt': '不合逻辑序列数',
+    # 如：退货→购买（应该是购买→退货）
+
+    # 时间一致性
+    'chronological_order': '时间顺序正确标志',
+    'time_inconsistency_cnt': '时间不一致次数',
+    # 如：购买时间早于浏览时间
+
+    # 空间一致性
+    'location_consistency': '位置一致性',
+    'impossible_location_jump': '不可能的位置跳跃',
+    # 如：1小时内从北京到上海
+
+    # 设备一致性
+    'device_consistency': '设备一致性',
+    'frequent_device_switch': '频繁设备切换'
+}
+```
+
+---
+
+#### 3.2 模式一致性
+
+**特征设计：**
+
+```python
+pattern_consistency = {
+    # 历史模式对比
+    'current_vs_history_pattern': '当前模式 vs 历史模式相似度',
+    'pattern_deviation': '模式偏离度',
+    'pattern_break': '模式断裂标志',
+
+    # 稳定性
+    'sequence_stability': '序列稳定性',
+    'predictable_behavior': '可预测行为标志',
+    'erratic_behavior': '不稳定行为标志',
+
+    # 重复性
+    'repeated_pattern_cnt': '重复模式次数',
+    'pattern_regularity': '模式规律性',
+    'stereotyped_behavior': '刻板行为标志（机器特征）'
+}
+```
+
+---
+
+#### 3.3 内容一致性
+
+**特征设计：**
+
+```python
+content_consistency = {
+    # 偏好一致性
+    'category_consistency': '品类偏好一致性',
+    'price_range_consistency': '价格区间一致性',
+    'brand_consistency': '品牌偏好一致性',
+
+    # 行为一致性
+    'action_consistency': '行为类型一致性',
+    'sudden_preference_change': '偏好突变标志',
+    'inconsistent_purchases': '不一致购买',
+    # 如：一直买低价突然买奢侈品
+
+    # 申报一致性
+    'declared_vs_behavior': '申报信息 vs 行为一致性',
+    # 如：申报低收入但买奢侈品
+}
+```
+
+---
+
+### 维度4：Anomaly（序列异常）
+
+**核心问题：** 序列中有异常吗？何处断裂/突变？
+
+**业务逻辑：**
+```
+序列异常体现风险事件：
+- 行为突变：账号被盗/状态改变
+- 序列断裂：流失/故障
+- 异常模式：欺诈/作弊
+```
+
+---
+
+#### 4.1 行为突变检测
+
+**特征设计：**
+
+```python
+behavior_mutation = {
+    # 频率突变
+    'frequency_spike': '频率突增（平时1天1次，突然1天10次）',
+    'frequency_drop': '频率突降（平时每天活跃，突然不活跃）',
+
+    # 模式突变
+    'pattern_shift': '模式迁移（行为模式完全改变）',
+    'sudden_new_behavior': '突然出现新行为',
+    'behavior_discontinuity': '行为不连续',
+
+    # 偏好突变
+    'preference_reversal': '偏好逆转',
+    'category_switch': '品类切换（从A类切换到B类）',
+
+    # 时间突变
+    'activity_time_shift': '活跃时间突变（白天→深夜）',
+    'timezone_change': '时区变化'
+}
+```
+
+---
+
+#### 4.2 异常序列检测
+
+**特征设计：**
+
+```python
+anomalous_sequence = {
+    # 不可能序列
+    'impossible_sequence': '不可能序列（逻辑矛盾）',
+    'reverse_order': '反向顺序（退货→购买）',
+
+    # 机器特征
+    'too_regular_sequence': '过于规律序列（机器特征）',
+    'identical_intervals': '完全相同的时间间隔',
+    'robotic_pattern': '机器人模式',
+
+    # 欺诈序列
+    'fraud_sequence_match': '匹配已知欺诈序列',
+    'test_behavior_pattern': '测试行为模式（小额试探）',
+    'batch_operation_sequence': '批量操作序列',
+
+    # 异常路径
+    'unusual_path': '不寻常路径（很少人走）',
+    'shortcut_path': '捷径路径（跳过关键步骤）',
+    'complex_path': '过于复杂路径（绕圈子）'
+}
+```
+
+**计算示例：**
+```python
+def detect_sequence_anomalies(sequence, normal_patterns):
+    """检测序列异常"""
+    anomalies = []
+
+    # 检测1：不可能序列
+    impossible_pairs = [('refund', 'purchase'), ('logout', 'add_to_cart')]
+    for i in range(len(sequence)-1):
+        if (sequence[i], sequence[i+1]) in impossible_pairs:
+            anomalies.append('impossible_sequence')
+
+    # 检测2：过于规律
+    if len(sequence) >= 3:
+        intervals = [sequence[i+1]['time'] - sequence[i]['time'] for i in range(len(sequence)-1)]
+        if len(set(intervals)) == 1:  # 所有间隔完全相同
+            anomalies.append('too_regular')
+
+    # 检测3：不寻常路径
+    sequence_str = '->'.join([s['action'] for s in sequence])
+    if sequence_str not in normal_patterns:
+        anomalies.append('unusual_path')
+
+    return {
+        'anomaly_types': anomalies,
+        'anomaly_cnt': len(anomalies),
+        'is_anomalous': (len(anomalies) > 0)
+    }
+```
+
+---
+
+#### 4.3 序列断裂检测
+
+**特征设计：**
+
+```python
+sequence_break = {
+    # 长间隔
+    'max_gap_duration': '最大间隔时长',
+    'long_gap_cnt': '长间隔次数（>7天）',
+    'activity_gap_ratio': '间隔占比',
+
+    # 断裂点
+    'sequence_break_point': '序列断裂点位置',
+    'break_recovery': '断裂后是否恢复',
+    'permanent_break': '永久断裂标志（流失）',
+
+    # 活跃期
+    'active_period_cnt': '活跃期数量',
+    'avg_active_period_length': '平均活跃期长度',
+    'inactive_period_cnt': '不活跃期数量',
+
+    # 周期性断裂
+    'seasonal_break': '季节性断裂',
+    'regular_break_pattern': '规律性断裂模式'
+}
+```
+
+---
+
+## 🔄 行为序列综合应用
+
+### 应用1：序列特征工程流程
+
+**步骤：**
+
+```python
+def extract_sequence_features(user_actions):
+    """完整的序列特征工程流程"""
+
+    # Step 1: 序列预处理
+    sequences = preprocess_sequences(user_actions)
+
+    # Step 2: 模式特征
+    ngram_feats = extract_ngram_features(sequences)
+    pattern_feats = match_sequence_templates(sequences)
+
+    # Step 3: 转移特征
+    transition_feats = calculate_transition_features(sequences)
+
+    # Step 4: 一致性特征
+    consistency_feats = check_sequence_consistency(sequences)
+
+    # Step 5: 异常特征
+    anomaly_feats = detect_sequence_anomalies(sequences)
+
+    # 合并所有特征
+    all_features = {
+        **ngram_feats,
+        **pattern_feats,
+        **transition_feats,
+        **consistency_feats,
+        **anomaly_feats
+    }
+
+    return all_features
+```
+
+---
+
+### 应用2：序列聚类（发现典型路径）
+
+**方法：**
+
+```python
+from sklearn.cluster import KMeans
+from sklearn.feature_extraction.text import CountVectorizer
+
+def cluster_sequences(sequences, n_clusters=5):
+    """序列聚类，发现典型路径"""
+
+    # 将序列转为字符串
+    seq_strings = ['->'.join(seq) for seq in sequences]
+
+    # 向量化
+    vectorizer = CountVectorizer(analyzer=lambda x: x.split('->'))
+    X = vectorizer.fit_transform(seq_strings)
+
+    # 聚类
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    clusters = kmeans.fit_predict(X)
+
+    # 每个簇的典型路径
+    typical_paths = {}
+    for i in range(n_clusters):
+        cluster_seqs = [sequences[j] for j in range(len(sequences)) if clusters[j] == i]
+        typical_paths[i] = find_most_common_sequence(cluster_seqs)
+
+    return clusters, typical_paths
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用行为序列？
+
+**触发条件：**
+1. 用户的数据有时间戳和行为类型
+2. 用户的目标是"用户行为分析/路径分析/转化优化"
+3. 用户说"想分析用户行为轨迹"
+4. 欺诈检测场景（行为模式异常）
+
+**引导话术：**
+```
+CHRIS: 我看到你的数据有用户行为序列，可以用"行为序列分析"
+       挖掘路径和模式特征。
+
+       🔄 行为序列分析从4个维度提取特征：
+       1. Pattern（模式） - 典型行为路径（A→B→C）
+       2. Transition（转移） - 状态转换规律（转化率）
+       3. Consistency（一致性） - 行为前后连贯性
+       4. Anomaly（异常） - 序列突变/断裂
+
+       💡 这些特征特别适合：
+       - 转化优化（分析漏斗流失点）
+       - 欺诈检测（异常行为序列）
+       - 用户意图识别（根据路径预测）
+       - 流失预警（序列断裂检测）
+
+       🤔 你想分析哪类序列特征？
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用行为序列时：**
+
+- [ ] 是否提取了N-gram模式？
+- [ ] 是否计算了状态转移概率？
+- [ ] 是否检查了序列一致性？
+- [ ] 是否检测了序列异常？
+- [ ] 是否发现了典型路径？
+- [ ] 是否分析了转化漏斗？
+
+**记住：**
+> "行为是连续的，不是孤立的。
+> 序列模式往往比单个行为更有预测力。"
+
+---
+
+**CHRIS Feature Engineering System**
+L3 数据形态框架 - 行为序列
+版本 3.0 | 2025年1月

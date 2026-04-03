@@ -1,0 +1,566 @@
+# L4 高级专题框架 - NLP文本挖掘（NLP Text Mining）
+
+## 📌 框架定位
+
+**本质：** 从文本数据中提取结构化特征
+
+**适用场景：**
+- 评论/反馈情感分析
+- 客服对话意图识别
+- 简历/申请材料文本分析
+- 社交媒体文本分析
+- 欺诈检测（文本异常）
+
+**核心思想：**
+> "文本不只是文字，还包含：
+> Content（内容）- 说了什么？
+> Style（风格）- 怎么说的？
+> Sentiment（情感）- 什么态度？
+> Semantics（语义）- 深层含义？"
+
+---
+
+## 🎯 NLP文本特征四维度
+
+### 维度1：Content Features（内容特征）
+
+**核心问题：** 文本说了什么？包含哪些信息？
+
+#### 1.1 基础统计特征
+
+**特征设计：**
+
+```python
+basic_text_stats = {
+    # 长度特征
+    'char_count': '字符数',
+    'word_count': '词数',
+    'sentence_count': '句子数',
+    'paragraph_count': '段落数',
+
+    # 平均长度
+    'avg_word_length': '平均词长',
+    'avg_sentence_length': '平均句长',
+
+    # 密度特征
+    'lexical_density': '词汇密度 = 实词/总词数',
+    'type_token_ratio': 'TTR = 不重复词数/总词数（词汇丰富度）',
+
+    # 特殊字符
+    'punctuation_cnt': '标点符号数',
+    'exclamation_cnt': '感叹号数量',
+    'question_cnt': '问号数量',
+    'emoji_cnt': 'Emoji数量',
+    'capital_letter_ratio': '大写字母占比',
+
+    # 数字特征
+    'digit_cnt': '数字字符数',
+    'number_cnt': '数字数量',
+    'has_phone': '是否包含电话号码',
+    'has_email': '是否包含邮箱',
+    'has_url': '是否包含URL'
+}
+```
+
+**计算示例：**
+```python
+import re
+
+def extract_basic_text_features(text):
+    """提取基础文本特征"""
+    # 长度特征
+    char_count = len(text)
+    word_count = len(text.split())
+    sentence_count = len(re.split(r'[.!?]', text))
+
+    # 特殊字符
+    exclamation_cnt = text.count('!')
+    question_cnt = text.count('?')
+
+    # 数字
+    digit_cnt = sum(c.isdigit() for c in text)
+    has_phone = bool(re.search(r'\d{3}-\d{4}-\d{4}', text))
+
+    return {
+        'char_count': char_count,
+        'word_count': word_count,
+        'sentence_count': sentence_count,
+        'exclamation_cnt': exclamation_cnt,
+        'question_cnt': question_cnt,
+        'digit_cnt': digit_cnt,
+        'has_phone': has_phone
+    }
+```
+
+---
+
+#### 1.2 关键词特征
+
+**特征设计：**
+
+```python
+keyword_features = {
+    # TF-IDF特征
+    'tfidf_top_words': 'TF-IDF最重要的词',
+    'tfidf_avg_score': '平均TF-IDF分数',
+
+    # 关键词出现
+    'contains_keyword_A': '是否包含关键词A',
+    'keyword_frequency': '关键词频率',
+    'keyword_diversity': '关键词多样性',
+
+    # 业务关键词
+    'risk_keyword_cnt': '风险关键词数量（如：紧急、借款）',
+    'positive_keyword_cnt': '正面关键词数量',
+    'negative_keyword_cnt': '负面关键词数量',
+
+    # 实体识别
+    'person_name_cnt': '人名数量',
+    'organization_cnt': '机构名数量',
+    'location_cnt': '地名数量',
+    'date_cnt': '日期数量'
+}
+```
+
+---
+
+#### 1.3 主题特征
+
+**特征设计：**
+
+```python
+topic_features = {
+    # 主题分布
+    'dominant_topic': '主导主题',
+    'topic_diversity': '主题多样性',
+    'topic_coherence': '主题一致性',
+
+    # 主题概率
+    'topic_0_prob': '主题0概率（LDA）',
+    'topic_1_prob': '主题1概率',
+    'max_topic_prob': '最大主题概率（置信度）',
+
+    # 业务主题
+    'is_complaint': '是否投诉主题',
+    'is_inquiry': '是否咨询主题',
+    'is_praise': '是否表扬主题',
+    'is_spam': '是否垃圾内容'
+}
+```
+
+---
+
+### 维度2：Style Features（风格特征）
+
+**核心问题：** 文本怎么写的？风格如何？
+
+#### 2.1 语言风格特征
+
+**特征设计：**
+
+```python
+language_style = {
+    # 复杂度
+    'flesch_reading_ease': 'Flesch可读性评分',
+    'avg_syllables_per_word': '平均每词音节数',
+    'complex_word_ratio': '复杂词占比（>3音节）',
+
+    # 正式程度
+    'formality_score': '正式程度评分',
+    'slang_cnt': '俚语/网络用语数量',
+    'abbreviation_cnt': '缩写数量',
+
+    # 句式
+    'passive_voice_ratio': '被动语态占比',
+    'question_ratio': '疑问句占比',
+    'imperative_ratio': '祈使句占比',
+
+    # 修辞
+    'adjective_ratio': '形容词占比',
+    'adverb_ratio': '副词占比',
+    'intensifier_cnt': '强化词数量（非常/特别/极其）'
+}
+```
+
+---
+
+#### 2.2 一致性特征
+
+**特征设计：**
+
+```python
+consistency_features = {
+    # 风格一致性
+    'style_consistency': '风格一致性评分',
+    'sudden_style_change': '风格突变标志',
+
+    # 内容一致性
+    'topic_drift': '主题漂移',
+    'contradiction_detected': '自相矛盾检测',
+
+    # 时间一致性
+    'writing_time_estimated': '预估写作时长',
+    'too_fast_writing': '写作过快标志（复制粘贴？）',
+    'writing_rhythm': '写作节奏'
+}
+```
+
+---
+
+#### 2.3 真实性特征（欺诈检测）
+
+**特征设计：**
+
+```python
+authenticity_features = {
+    # 抄袭检测
+    'plagiarism_score': '抄袭评分',
+    'template_match': '模板匹配度',
+    'boilerplate_ratio': '套话占比',
+
+    # 机器生成检测
+    'ai_generated_score': 'AI生成内容评分',
+    'repetitive_pattern': '重复模式（机器特征）',
+    'unnatural_phrasing': '不自然表达',
+
+    # 虚假信息
+    'vague_description': '模糊描述（缺乏细节）',
+    'excessive_details': '过度细节（编造特征）',
+    'inconsistent_info': '信息前后矛盾'
+}
+```
+
+---
+
+### 维度3：Sentiment Features（情感特征）
+
+**核心问题：** 文本表达什么情感？态度如何？
+
+#### 3.1 情感极性特征
+
+**特征设计：**
+
+```python
+sentiment_polarity = {
+    # 基础情感
+    'sentiment_score': '情感评分（-1到1）',
+    'positive_score': '正面情感分数',
+    'negative_score': '负面情感分数',
+    'neutral_score': '中性情感分数',
+
+    # 情感分类
+    'sentiment_label': '情感标签（positive/negative/neutral）',
+    'is_positive': '是否正面',
+    'is_negative': '是否负面',
+
+    # 情感强度
+    'sentiment_intensity': '情感强度',
+    'very_positive': '非常正面标志',
+    'very_negative': '非常负面标志',
+
+    # 情感词汇
+    'positive_word_cnt': '正面词数量',
+    'negative_word_cnt': '负面词数量',
+    'emotion_word_ratio': '情感词占比'
+}
+```
+
+**计算示例：**
+```python
+from textblob import TextBlob
+
+def extract_sentiment_features(text):
+    """提取情感特征"""
+    blob = TextBlob(text)
+    sentiment = blob.sentiment
+
+    return {
+        'sentiment_score': sentiment.polarity,  # -1到1
+        'sentiment_subjectivity': sentiment.subjectivity,  # 0到1
+        'is_positive': (sentiment.polarity > 0.1),
+        'is_negative': (sentiment.polarity < -0.1),
+        'sentiment_intensity': abs(sentiment.polarity)
+    }
+```
+
+---
+
+#### 3.2 细粒度情感特征
+
+**特征设计：**
+
+```python
+fine_grained_sentiment = {
+    # 多维情感
+    'joy_score': '喜悦情感',
+    'sadness_score': '悲伤情感',
+    'anger_score': '愤怒情感',
+    'fear_score': '恐惧情感',
+    'surprise_score': '惊讶情感',
+    'disgust_score': '厌恶情感',
+
+    # 主导情感
+    'dominant_emotion': '主导情感',
+    'emotion_diversity': '情感多样性',
+    'mixed_emotions': '混合情感标志',
+
+    # 情感变化
+    'sentiment_volatility': '情感波动性',
+    'sentiment_shift': '情感转变（开始vs结尾）',
+    'sentiment_trend': '情感趋势（递增/递减）'
+}
+```
+
+---
+
+#### 3.3 主观性特征
+
+**特征设计：**
+
+```python
+subjectivity_features = {
+    # 主观性
+    'subjectivity_score': '主观性评分（0-1）',
+    'is_subjective': '是否主观内容',
+    'is_objective': '是否客观内容',
+
+    # 观点强度
+    'opinion_strength': '观点强度',
+    'certainty_level': '确定性程度',
+    'hedging_words_cnt': '模糊词数量（可能/也许）',
+
+    # 情绪化程度
+    'emotional_intensity': '情绪化程度',
+    'rational_content': '理性内容标志'
+}
+```
+
+---
+
+### 维度4：Semantic Features（语义特征）
+
+**核心问题：** 文本的深层含义？
+
+#### 4.1 词向量特征
+
+**特征设计：**
+
+```python
+word_embedding_features = {
+    # 平均词向量
+    'avg_word_embedding': '平均词向量（300维）',
+    'weighted_avg_embedding': 'TF-IDF加权平均词向量',
+
+    # 句向量
+    'sentence_embedding': '句向量（BERT/Sentence-BERT）',
+
+    # 相似度
+    'similarity_to_template': '与模板文本的余弦相似度',
+    'similarity_to_fraud_text': '与欺诈文本的相似度',
+    'similarity_to_normal_text': '与正常文本的相似度',
+
+    # 聚类
+    'text_cluster': '文本聚类ID',
+    'distance_to_cluster_center': '到聚类中心的距离'
+}
+```
+
+**计算示例：**
+```python
+from sentence_transformers import SentenceTransformer
+import numpy as np
+
+def extract_semantic_features(text, reference_texts):
+    """提取语义特征"""
+    # 加载模型
+    model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+
+    # 生成向量
+    text_embedding = model.encode(text)
+    reference_embeddings = model.encode(reference_texts)
+
+    # 计算相似度
+    similarities = [
+        np.dot(text_embedding, ref_emb) / (np.linalg.norm(text_embedding) * np.linalg.norm(ref_emb))
+        for ref_emb in reference_embeddings
+    ]
+
+    return {
+        'sentence_embedding': text_embedding,
+        'max_similarity': max(similarities),
+        'avg_similarity': np.mean(similarities)
+    }
+```
+
+---
+
+#### 4.2 意图识别特征
+
+**特征设计：**
+
+```python
+intent_features = {
+    # 意图分类
+    'intent': '意图类别',
+    'intent_confidence': '意图置信度',
+
+    # 业务意图
+    'is_purchase_intent': '是否购买意图',
+    'is_inquiry_intent': '是否咨询意图',
+    'is_complaint_intent': '是否投诉意图',
+    'is_fraud_intent': '是否欺诈意图',
+
+    # 意图强度
+    'intent_strength': '意图强度',
+    'urgency_level': '紧迫程度',
+    'action_words_cnt': '动作词数量'
+}
+```
+
+---
+
+#### 4.3 实体关系特征
+
+**特征设计：**
+
+```python
+entity_relation_features = {
+    # 实体
+    'entity_cnt': '实体总数',
+    'entity_types': '实体类型列表',
+    'key_entity': '关键实体',
+
+    # 关系
+    'entity_relation_cnt': '实体关系数量',
+    'relation_types': '关系类型列表',
+
+    # 三元组
+    'triple_cnt': '三元组数量（主-谓-宾）',
+    'key_triple': '关键三元组',
+
+    # 业务实体
+    'person_entity_cnt': '人物实体数',
+    'org_entity_cnt': '机构实体数',
+    'product_entity_cnt': '产品实体数'
+}
+```
+
+---
+
+## 🔄 NLP综合应用
+
+### 应用1：文本特征提取Pipeline
+
+**完整流程：**
+
+```python
+def extract_all_text_features(text):
+    """完整文本特征提取"""
+
+    features = {}
+
+    # 1. 基础统计
+    features.update(extract_basic_text_features(text))
+
+    # 2. 关键词
+    features.update(extract_keyword_features(text))
+
+    # 3. 情感分析
+    features.update(extract_sentiment_features(text))
+
+    # 4. 语义特征
+    features.update(extract_semantic_features(text))
+
+    # 5. 风格特征
+    features.update(extract_style_features(text))
+
+    return features
+```
+
+---
+
+### 应用2：欺诈文本检测
+
+**检测逻辑：**
+
+```python
+def detect_fraud_text(text, fraud_patterns):
+    """欺诈文本检测"""
+    fraud_signals = []
+
+    # 信号1：模板文本（抄袭）
+    if template_match_score(text) > 0.8:
+        fraud_signals.append('template_match')
+
+    # 信号2：写作过快
+    if estimated_writing_time(text) < 30:  # 秒
+        fraud_signals.append('too_fast_writing')
+
+    # 信号3：风险关键词
+    risk_keywords = ['紧急', '借款', '急需', '帮忙']
+    if any(kw in text for kw in risk_keywords):
+        fraud_signals.append('risk_keywords')
+
+    # 信号4：与已知欺诈文本相似
+    fraud_similarity = calculate_similarity(text, fraud_patterns)
+    if fraud_similarity > 0.7:
+        fraud_signals.append('similar_to_fraud')
+
+    return {
+        'fraud_signals': fraud_signals,
+        'fraud_signal_cnt': len(fraud_signals),
+        'is_suspicious': (len(fraud_signals) >= 2)
+    }
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用NLP文本挖掘？
+
+**触发条件：**
+1. 用户的数据有文本字段（评论/描述/对话）
+2. 用户说"想分析文本内容"
+3. 用户的目标是"情感分析/意图识别/欺诈检测"
+
+**引导话术：**
+```
+CHRIS: 我看到你的数据有文本字段，可以用"NLP文本挖掘"
+       提取结构化特征。
+
+       📝 NLP文本挖掘从4个维度提取特征：
+       1. Content（内容） - 长度、关键词、主题
+       2. Style（风格） - 复杂度、正式程度、真实性
+       3. Sentiment（情感） - 情感极性、主观性
+       4. Semantics（语义） - 词向量、意图、实体
+
+       💡 基于你的文本内容，我建议：
+       [分析文本类型，推荐特征]
+
+       🤔 你的文本是什么类型？
+       （评论/描述/对话/申请材料？）
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用NLP文本挖掘时：**
+
+- [ ] 是否提取了基础统计特征？
+- [ ] 是否进行了情感分析？
+- [ ] 是否提取了关键词/主题？
+- [ ] 是否生成了词向量/句向量？
+- [ ] 是否检测了文本异常/欺诈？
+- [ ] 是否分析了文本风格？
+
+**记住：**
+> "文本是非结构化的宝藏，
+> 需要用NLP工具将其结构化。"
+
+---
+
+**CHRIS Feature Engineering System**
+L4 高级专题框架 - NLP文本挖掘
+版本 3.0 | 2025年1月

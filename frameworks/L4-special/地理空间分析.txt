@@ -1,0 +1,608 @@
+# L4 高级专题框架 - 地理空间分析（Geospatial Analysis）
+
+## 📌 框架定位
+
+**本质：** 从地理位置和空间关系中挖掘特征
+
+**适用场景：**
+- 信用卡欺诈检测（位置异常）
+- O2O业务分析（位置偏好）
+- 物流优化（距离/时间）
+- 风险评估（地域风险）
+- 营销（地理定向）
+
+**核心思想：**
+> "位置包含信息：
+> Location（位置）- 在哪里？
+> Distance（距离）- 多远？
+> Movement（移动）- 怎么移动？
+> Context（环境）- 周边如何？"
+
+---
+
+## 🎯 地理空间四维度详解
+
+### 维度1：Location Features（位置特征）
+
+**核心问题：** 用户在哪里？位置属性如何？
+
+#### 1.1 绝对位置特征
+
+**特征设计：**
+
+```python
+absolute_location = {
+    # 坐标
+    'latitude': '纬度',
+    'longitude': '经度',
+    'altitude': '海拔',
+
+    # 行政区划
+    'country': '国家',
+    'province': '省份',
+    'city': '城市',
+    'district': '区县',
+    'postal_code': '邮政编码',
+
+    # 位置类型
+    'location_type': '位置类型（城市/郊区/农村）',
+    'city_tier': '城市等级（一线/二线/三线）',
+    'urban_rural': '城乡分类',
+
+    # IP位置
+    'ip_location': 'IP归属地',
+    'ip_country': 'IP国家',
+    'ip_city': 'IP城市'
+}
+```
+
+---
+
+#### 1.2 相对位置特征
+
+**特征设计：**
+
+```python
+relative_location = {
+    # 相对地标
+    'distance_to_city_center': '距离市中心距离（km）',
+    'distance_to_cbd': '距离商业区距离',
+    'distance_to_landmark': '距离地标距离',
+
+    # 相对常住地
+    'distance_from_home': '距离常住地距离',
+    'distance_from_work': '距离工作地距离',
+    'distance_from_registered_address': '距离户籍地距离',
+
+    # 相对历史位置
+    'distance_from_last_location': '距离上次位置距离',
+    'distance_from_usual_area': '距离常活动区域距离',
+
+    # 位置一致性
+    'gps_ip_consistency': 'GPS位置与IP位置一致性',
+    'declared_actual_consistency': '申报地址与实际位置一致性'
+}
+```
+
+---
+
+#### 1.3 位置属性特征
+
+**特征设计：**
+
+```python
+location_attributes = {
+    # 经济属性
+    'location_gdp': '所在地GDP',
+    'location_income_per_capita': '所在地人均收入',
+    'location_house_price': '所在地房价',
+    'location_consumption_level': '所在地消费水平',
+
+    # 人口属性
+    'location_population': '所在地人口',
+    'location_population_density': '人口密度',
+    'location_age_structure': '年龄结构',
+
+    # 风险属性
+    'location_fraud_rate': '所在地欺诈率',
+    'location_default_rate': '所在地违约率',
+    'location_crime_rate': '犯罪率',
+    'location_risk_level': '地域风险等级',
+
+    # 商业属性
+    'location_poi_density': 'POI密度（商业繁荣度）',
+    'nearby_bank_cnt': '附近银行数量',
+    'nearby_atm_cnt': '附近ATM数量',
+    'nearby_merchant_cnt': '附近商户数量'
+}
+```
+
+**计算示例：**
+```python
+def extract_location_features(lat, lon, city):
+    """提取位置特征"""
+    # 城市等级
+    tier1_cities = ['北京', '上海', '广州', '深圳']
+    city_tier = 1 if city in tier1_cities else 2  # 简化
+
+    # 距离市中心（假设有市中心坐标）
+    city_center_coords = {'北京': (39.9042, 116.4074)}  # 天安门
+    if city in city_center_coords:
+        center_lat, center_lon = city_center_coords[city]
+        distance_to_center = haversine_distance(lat, lon, center_lat, center_lon)
+    else:
+        distance_to_center = None
+
+    return {
+        'city_tier': city_tier,
+        'distance_to_city_center': distance_to_center
+    }
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """计算两点间距离（km）"""
+    from math import radians, cos, sin, asin, sqrt
+
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))
+    r = 6371  # 地球半径（km）
+
+    return c * r
+```
+
+---
+
+### 维度2：Distance Features（距离特征）
+
+**核心问题：** 距离多远？距离是否合理？
+
+#### 2.1 基础距离特征
+
+**特征设计：**
+
+```python
+basic_distance = {
+    # 空间距离
+    'euclidean_distance': '欧氏距离（直线距离）',
+    'haversine_distance': 'Haversine距离（球面距离）',
+    'manhattan_distance': '曼哈顿距离',
+
+    # 交通距离
+    'driving_distance': '驾车距离（km）',
+    'driving_time': '驾车时间（分钟）',
+    'public_transport_distance': '公共交通距离',
+    'walking_distance': '步行距离',
+
+    # 距离分段
+    'distance_level': '距离等级（近/中/远）',
+    'is_nearby': '是否附近（<5km）',
+    'is_same_city': '是否同城',
+    'is_same_province': '是否同省',
+    'is_cross_border': '是否跨国'
+}
+```
+
+---
+
+#### 2.2 距离比率特征
+
+**特征设计：**
+
+```python
+distance_ratio = {
+    # 距离vs时间
+    'speed': '速度 = 距离 / 时间',
+    'avg_speed': '平均速度',
+    'max_speed': '最大速度',
+
+    # 距离vs金额
+    'distance_per_yuan': '每元消费距离（配送距离/订单金额）',
+    'yuan_per_km': '每公里消费金额',
+
+    # 距离vs频率
+    'distance_per_visit': '平均每次访问距离',
+    'visit_per_km': '单位距离访问频率'
+}
+```
+
+---
+
+#### 2.3 不合理距离检测
+
+**特征设计：**
+
+```python
+impossible_distance = {
+    # 物理不可能
+    'impossible_speed': '不可能的速度（>飞机）',
+    'teleportation_flag': '瞬移标志（短时间内跨大距离）',
+
+    # 逻辑不合理
+    'too_far_for_small_purchase': '小额消费但距离太远',
+    'cross_city_for_small_item': '跨城购买低价商品',
+
+    # 异常距离
+    'sudden_long_distance': '突然长距离（vs历史）',
+    'distance_anomaly_score': '距离异常评分'
+}
+```
+
+**业务应用：**
+```
+欺诈检测：
+- 1小时内北京→上海交易 → 不可能，盗刷
+- 跨国交易但金额很小 → 不合理
+- 历史都在北京，突然在新疆 → 异常
+```
+
+---
+
+### 维度3：Movement Features（移动特征）
+
+**核心问题：** 怎么移动的？移动模式如何？
+
+#### 3.1 移动轨迹特征
+
+**特征设计：**
+
+```python
+trajectory = {
+    # 轨迹长度
+    'total_distance': '总移动距离',
+    'unique_locations': '不重复位置数',
+    'trajectory_length': '轨迹点数',
+
+    # 活动范围
+    'activity_radius': '活动半径（标准差椭圆）',
+    'activity_area': '活动面积（凸包）',
+    'bounding_box_area': '外接矩形面积',
+
+    # 轨迹形状
+    'trajectory_tortuosity': '轨迹曲折度',
+    'straight_line_ratio': '直线移动占比',
+    'backtrack_cnt': '回溯次数',
+
+    # 移动模式
+    'nomadic_pattern': '游牧模式（大范围移动）',
+    'sedentary_pattern': '定居模式（固定区域）',
+    'commuter_pattern': '通勤模式（两点往返）'
+}
+```
+
+---
+
+#### 3.2 移动速度特征
+
+**特征设计：**
+
+```python
+movement_speed = {
+    # 速度统计
+    'avg_speed': '平均速度',
+    'max_speed': '最大速度',
+    'speed_std': '速度标准差',
+    'speed_percentile_95': '95分位速度',
+
+    # 速度模式
+    'stationary_time_ratio': '静止时间占比',
+    'walking_speed_ratio': '步行速度占比（<5km/h）',
+    'driving_speed_ratio': '驾车速度占比（30-120km/h）',
+    'high_speed_ratio': '高速移动占比（>120km/h）',
+
+    # 异常速度
+    'impossible_speed_cnt': '不可能速度次数（>飞机）',
+    'sudden_speed_change': '速度突变次数',
+    'speed_anomaly_score': '速度异常评分'
+}
+```
+
+---
+
+#### 3.3 移动频率特征
+
+**特征设计：**
+
+```python
+movement_frequency = {
+    # 移动次数
+    'movement_cnt': '移动次数',
+    'location_change_cnt': '位置变化次数',
+    'cross_city_cnt': '跨城次数',
+    'cross_province_cnt': '跨省次数',
+    'cross_border_cnt': '跨国次数',
+
+    # 移动频率
+    'movements_per_day': '日均移动次数',
+    'location_changes_per_week': '周均位置变化',
+
+    # 移动稳定性
+    'movement_regularity': '移动规律性',
+    'home_return_rate': '回家频率',
+    'movement_volatility': '移动波动性',
+
+    # 异常移动
+    'frequent_movement_flag': '频繁移动标志',
+    'nomadic_lifestyle': '游牧生活方式标志'
+}
+```
+
+---
+
+### 维度4：Context Features（环境特征）
+
+**核心问题：** 周边环境如何？
+
+#### 4.1 POI特征（Point of Interest）
+
+**特征设计：**
+
+```python
+poi_features = {
+    # POI密度
+    'poi_density_500m': '500米内POI密度',
+    'poi_diversity': 'POI类型多样性',
+
+    # 商业POI
+    'nearby_merchant_cnt': '附近商户数量',
+    'nearby_restaurant_cnt': '附近餐厅数量',
+    'nearby_shopping_mall_cnt': '附近商场数量',
+
+    # 金融POI
+    'nearby_bank_cnt': '附近银行数量',
+    'nearby_atm_cnt': '附近ATM数量',
+    'distance_to_nearest_bank': '最近银行距离',
+
+    # 生活POI
+    'nearby_hospital_cnt': '附近医院数量',
+    'nearby_school_cnt': '附近学校数量',
+    'nearby_park_cnt': '附近公园数量',
+
+    # 交通POI
+    'nearby_subway_station_cnt': '附近地铁站数量',
+    'nearby_bus_station_cnt': '附近公交站数量',
+    'distance_to_nearest_subway': '最近地铁站距离'
+}
+```
+
+---
+
+#### 4.2 地理环境特征
+
+**特征设计：**
+
+```python
+geo_environment = {
+    # 地形
+    'terrain_type': '地形类型（平原/山地/丘陵）',
+    'elevation': '海拔',
+    'slope': '坡度',
+
+    # 气候
+    'climate_zone': '气候带',
+    'annual_temperature': '年均温度',
+    'annual_rainfall': '年降雨量',
+
+    # 土地利用
+    'land_use_type': '土地利用类型',
+    'residential_area': '住宅区标志',
+    'commercial_area': '商业区标志',
+    'industrial_area': '工业区标志',
+    'rural_area': '农村区域标志',
+
+    # 建筑
+    'building_density': '建筑密度',
+    'building_height_avg': '平均建筑高度',
+    'high_rise_ratio': '高层建筑占比'
+}
+```
+
+---
+
+#### 4.3 社会环境特征
+
+**特征设计：**
+
+```python
+social_environment = {
+    # 经济环境
+    'economic_development_level': '经济发展水平',
+    'employment_rate': '就业率',
+    'industry_structure': '产业结构',
+
+    # 教育环境
+    'education_level': '教育水平',
+    'university_cnt': '大学数量',
+    'high_school_cnt': '中学数量',
+
+    # 安全环境
+    'crime_rate': '犯罪率',
+    'police_station_density': '警察局密度',
+    'security_level': '治安等级',
+
+    # 网络环境
+    'network_coverage': '网络覆盖率',
+    'avg_internet_speed': '平均网速',
+    'wifi_density': 'WiFi热点密度'
+}
+```
+
+---
+
+## 🔄 地理空间综合应用
+
+### 应用1：位置异常检测
+
+**检测逻辑：**
+
+```python
+def detect_location_anomalies(current_location, user_history):
+    """位置异常检测"""
+    anomalies = []
+
+    # 异常1：不可能的移动速度
+    if user_history['last_location']:
+        distance = haversine_distance(
+            current_location['lat'], current_location['lon'],
+            user_history['last_location']['lat'], user_history['last_location']['lon']
+        )
+        time_hours = (current_location['time'] - user_history['last_location']['time']).seconds / 3600
+        speed = distance / time_hours if time_hours > 0 else 0
+
+        if speed > 900:  # >飞机速度
+            anomalies.append('impossible_speed')
+
+    # 异常2：突然跨国
+    if (current_location['country'] != user_history['usual_country'] and
+        user_history['cross_border_cnt'] == 0):
+        anomalies.append('sudden_cross_border')
+
+    # 异常3：位置与IP不一致
+    if current_location['gps_city'] != current_location['ip_city']:
+        anomalies.append('gps_ip_mismatch')
+
+    # 异常4：偏离常活动区域
+    if distance_from_usual_area(current_location, user_history) > 100:  # >100km
+        anomalies.append('far_from_usual_area')
+
+    return {
+        'anomaly_types': anomalies,
+        'anomaly_cnt': len(anomalies),
+        'is_suspicious': (len(anomalies) >= 2)
+    }
+```
+
+---
+
+### 应用2：地理聚类（发现活动中心）
+
+**方法：**
+
+```python
+from sklearn.cluster import DBSCAN
+import numpy as np
+
+def discover_activity_centers(location_history):
+    """发现用户活动中心"""
+    # 提取坐标
+    coords = np.array([[loc['lat'], loc['lon']] for loc in location_history])
+
+    # DBSCAN聚类
+    db = DBSCAN(eps=0.01, min_samples=5).fit(coords)  # eps单位：度
+    labels = db.labels_
+
+    # 识别活动中心
+    unique_labels = set(labels)
+    activity_centers = []
+
+    for label in unique_labels:
+        if label == -1:  # 噪声点
+            continue
+
+        cluster_points = coords[labels == label]
+        center = cluster_points.mean(axis=0)
+        visit_cnt = len(cluster_points)
+
+        activity_centers.append({
+            'center_lat': center[0],
+            'center_lon': center[1],
+            'visit_cnt': visit_cnt,
+            'label': label
+        })
+
+    # 特征
+    features = {
+        'activity_center_cnt': len(activity_centers),
+        'primary_center': max(activity_centers, key=lambda x: x['visit_cnt']) if activity_centers else None,
+        'activity_concentration': max([c['visit_cnt'] for c in activity_centers]) / len(location_history) if activity_centers else 0
+    }
+
+    return features, activity_centers
+```
+
+---
+
+### 应用3：地理围栏风控
+
+**应用逻辑：**
+
+```python
+def geofence_risk_control(transaction_location, user_profile):
+    """地理围栏风控"""
+
+    # 规则1：高风险地区
+    high_risk_regions = ['某些高欺诈地区']
+    if transaction_location['region'] in high_risk_regions:
+        return {'risk_level': 'high', 'reason': 'high_risk_region'}
+
+    # 规则2：偏离常住地
+    distance = haversine_distance(
+        transaction_location['lat'], transaction_location['lon'],
+        user_profile['home_lat'], user_profile['home_lon']
+    )
+
+    if distance > 1000:  # >1000km
+        return {'risk_level': 'medium', 'reason': 'far_from_home'}
+
+    # 规则3：首次在该地区
+    if transaction_location['city'] not in user_profile['visited_cities']:
+        return {'risk_level': 'medium', 'reason': 'first_time_location'}
+
+    return {'risk_level': 'low', 'reason': 'normal'}
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用地理空间分析？
+
+**触发条件：**
+1. 用户的数据有位置信息（GPS/IP/地址）
+2. 用户的目标是"欺诈检测/O2O分析"
+3. 用户说"想分析位置模式"
+4. 物流/配送业务
+
+**引导话术：**
+```
+CHRIS: 我看到你的数据有位置信息，可以用"地理空间分析"
+       挖掘位置特征。
+
+       🗺️ 地理空间分析从4个维度提取特征：
+       1. Location（位置） - 在哪？城市等级、地域风险
+       2. Distance（距离） - 多远？是否合理？
+       3. Movement（移动） - 轨迹、速度、频率
+       4. Context（环境） - 周边POI、经济环境
+
+       💡 这些特征特别适合：
+       - 欺诈检测（不可能的移动速度）
+       - 风险评估（地域风险、位置一致性）
+       - O2O分析（活动范围、位置偏好）
+
+       🤔 你的位置数据类型？
+       （GPS坐标/IP地址/填写地址？）
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用地理空间分析时：**
+
+- [ ] 是否提取了位置属性特征？
+- [ ] 是否计算了距离特征？
+- [ ] 是否分析了移动轨迹？
+- [ ] 是否检测了位置异常？
+- [ ] 是否识别了活动中心？
+- [ ] 是否考虑了地域风险？
+
+**记住：**
+> "位置不只是坐标，还包含环境、风险、移动模式。"
+
+---
+
+**CHRIS Feature Engineering System**
+L4 高级专题框架 - 地理空间分析
+版本 3.0 | 2025年1月

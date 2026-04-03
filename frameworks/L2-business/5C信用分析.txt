@@ -1,0 +1,861 @@
+# L2 核心业务框架 - 5C信用分析（5C Credit Analysis）
+
+## 📌 框架定位
+
+**本质：** 信贷行业经典的信用评估框架，从5个维度全面评估借款人信用
+
+**适用场景：**
+- 信贷/贷款业务的特征工程
+- 信用卡审批/额度管理
+- P2P借贷风险评估
+- 任何涉及"还款能力/意愿"评估的场景
+
+**核心思想：**
+> "一个人会不会还钱，取决于5个C：
+> 品德(Character)、能力(Capacity)、资本(Capital)、
+> 抵押(Collateral)、环境(Conditions)"
+
+---
+
+## 🎯 5C框架详解
+
+### C1: Character（品德 - 还款意愿）
+
+**核心问题：** 这个人守不守信？愿不愿意还钱?
+
+**业务逻辑：**
+```
+品德决定还款意愿：
+- 历史上守信 → 未来大概率守信
+- 历史上失信 → 未来大概率失信
+- 道德水平高 → 即使困难也会努力还
+- 道德水平低 → 有机会就会逃废债
+```
+
+#### 1.1 信用历史（Credit History）
+
+**直接特征：**
+```
+历史违约记录：
+├─ 历史逾期次数（M1/M2/M3+逾期）
+├─ 最长逾期天数
+├─ 最近一次逾期距今时间
+├─ 逾期金额（小额 vs 大额）
+└─ 逾期频率（偶尔 vs 经常）
+
+还款表现：
+├─ 按时还款次数
+├─ 提前还款次数
+├─ 还款金额完整性（全额 vs 最低还款额）
+├─ 历史贷款笔数 vs 结清笔数
+└─ 当前逾期状态（是否正在逾期）
+```
+
+**衍生特征：**
+```python
+character_credit_history = {
+    # 基础特征
+    'overdue_cnt_total': '历史总逾期次数',
+    'overdue_cnt_m1': 'M1逾期次数（逾期30天内）',
+    'overdue_cnt_m2': 'M2逾期次数（逾期31-60天）',
+    'overdue_cnt_m3plus': 'M3+逾期次数（逾期60天以上）',
+    'max_overdue_days': '最长逾期天数',
+    'days_since_last_overdue': '距离最近一次逾期天数',
+
+    # 衍生特征
+    'overdue_rate': '逾期率 = 逾期次数 / 总借款次数',
+    'serious_overdue_rate': '严重逾期率 = M3+逾期 / 总逾期',
+    'overdue_worsening_trend': '逾期恶化趋势 = 近6月逾期 / 历史逾期',
+    'repayment_completion_rate': '还款完整度 = 全额还款次数 / 总还款次数',
+    'early_repay_rate': '提前还款率 = 提前还款次数 / 总还款次数',
+
+    # 综合评分
+    'credit_history_score': '信用历史评分 = f(逾期严重度, 逾期频率, 还款表现)'
+}
+```
+
+#### 1.2 信用意识（Credit Awareness）
+
+**间接推断特征：**
+```
+申请行为：
+├─ 短期内申请次数（频繁申请 = 资金饥渴/以贷养贷）
+├─ 征信查询次数（过多查询 = 到处借钱）
+├─ 多头借贷情况（同时在多家机构借款）
+└─ 申请拒绝后的再次申请间隔（被拒后立即再试 = 急迫/不理性）
+
+使用行为：
+├─ 信用卡使用率（>90% = 资金紧张/套现风险）
+├─ 账单日前大额消费（账单日套现特征）
+├─ 取现频率（取现 = 缺现金，高风险）
+└─ 分期使用频率（频繁分期 = 还款压力大）
+
+异常行为：
+├─ 恶意透支特征（额度用尽后不还款）
+├─ 失联风险（联系方式失效）
+├─ 虚假信息（申请信息前后矛盾）
+└─ 欺诈关联（与已知欺诈团伙有关联）
+```
+
+**衍生特征：**
+```python
+character_awareness = {
+    # 申请行为
+    'apply_cnt_7d': '近7天申请次数',
+    'apply_cnt_30d': '近30天申请次数',
+    'credit_inquiry_cnt_6m': '近6个月征信查询次数',
+    'multi_loan_cnt': '多头借贷笔数（同时在多家借款）',
+    'apply_interval_after_reject': '被拒后再次申请间隔天数',
+
+    # 使用行为
+    'credit_card_utilization': '信用卡使用率 = 已用额度 / 总额度',
+    'high_utilization_flag': '高使用率标志（>90%）',
+    'cash_advance_cnt': '取现次数',
+    'installment_cnt': '分期次数',
+
+    # 异常行为
+    'maxout_no_repay_flag': '额度用尽无还款标志',
+    'contact_invalid_flag': '联系方式失效标志',
+    'info_inconsistency_score': '信息前后一致性评分',
+    'fraud_network_score': '欺诈网络关联评分',
+
+    # 综合评分
+    'credit_awareness_score': '信用意识评分 = f(申请理性度, 使用健康度, 异常程度)'
+}
+```
+
+---
+
+### C2: Capacity（能力 - 还款能力）
+
+**核心问题：** 这个人有没有能力还钱？收入够不够？
+
+**业务逻辑：**
+```
+还款能力 = 收入能力 - 负债水平 - 支出水平
+- 收入高 → 还款能力强
+- 负债高 → 可支配收入少
+- 支出大 → 可用于还款的钱少
+```
+
+#### 2.1 收入能力（Income Capacity）
+
+**直接特征：**
+```
+收入水平：
+├─ 月收入 / 年收入
+├─ 收入来源（工资/经营/投资/其他）
+├─ 收入稳定性（固定工资 vs 绩效提成）
+└─ 收入证明方式（银行流水 vs 自报）
+
+收入稳定性：
+├─ 工作单位性质（国企/外企/民企/个体）
+├─ 工作年限（同一单位/总工作年限）
+├─ 职业类型（公务员/白领/蓝领/自由职业）
+├─ 行业类型（稳定行业 vs 周期性行业）
+└─ 近6个月收入波动系数
+```
+
+**衍生特征：**
+```python
+capacity_income = {
+    # 基础特征
+    'monthly_income': '月收入',
+    'annual_income': '年收入',
+    'income_source_type': '收入来源类型',
+    'income_proof_type': '收入证明方式',
+
+    # 收入稳定性
+    'employer_type': '雇主类型（国企/外企/民企）',
+    'job_tenure_years': '当前工作年限',
+    'total_work_years': '总工作年限',
+    'occupation': '职业类型',
+    'industry': '所在行业',
+    'income_volatility_6m': '近6月收入波动系数 = std / mean',
+
+    # 收入质量
+    'income_stability_score': '收入稳定性评分',
+    'income_growth_trend': '收入增长趋势（近6月斜率）',
+    'base_salary_ratio': '基本工资占比 = 基本工资 / 总收入',
+
+    # 收入潜力
+    'income_ceiling': '收入天花板 = 当前收入 / 该职业最高收入',
+    'career_stage': '职业阶段 = 当前年龄 / 该职业收入峰值年龄',
+    'income_vs_education': '收入与学历匹配度'
+}
+```
+
+#### 2.2 负债水平（Debt Level）
+
+**直接特征：**
+```
+负债规模：
+├─ 未偿贷款总额
+├─ 信用卡未还余额
+├─ 其他负债（车贷/房贷/消费贷）
+├─ 负债笔数
+└─ 本次申请金额
+
+负债结构：
+├─ 短期负债 vs 长期负债
+├─ 有抵押负债 vs 无抵押负债
+├─ 消费负债 vs 经营负债
+└─ 负债集中度（单一机构负债占比）
+```
+
+**衍生特征：**
+```python
+capacity_debt = {
+    # 基础特征
+    'total_debt': '未偿贷款总额',
+    'credit_card_debt': '信用卡未还余额',
+    'mortgage': '房贷余额',
+    'auto_loan': '车贷余额',
+    'consumer_loan': '消费贷余额',
+    'debt_cnt': '负债笔数',
+
+    # 负债比率（核心特征）
+    'dti_ratio': 'DTI（负债收入比）= 月还款额 / 月收入',
+    'debt_to_income': '负债总额 / 年收入',
+    'new_loan_to_income': '本次申请金额 / 月收入',
+
+    # 负债结构
+    'short_term_debt_ratio': '短期负债占比',
+    'unsecured_debt_ratio': '无抵押负债占比',
+    'debt_concentration': '负债集中度（HHI）',
+
+    # 负债趋势
+    'debt_growth_6m': '近6月负债增长率',
+    'debt_acceleration': '负债增长加速度',
+
+    # 负债预警
+    'high_dti_flag': '高DTI预警（>50%）',
+    'multi_debt_flag': '多头负债预警（>3家机构）',
+    'debt_income_mismatch': '负债与收入不匹配'
+}
+```
+
+#### 2.3 支出水平（Expenditure Level）
+
+**推断特征：**
+```
+固定支出：
+├─ 房租/房贷月供
+├─ 赡养人口数 × 人均支出
+├─ 子女教育支出
+└─ 其他固定支出
+
+消费支出：
+├─ 月均消费金额（信用卡账单）
+├─ 消费类目分布
+├─ 必需消费 vs 非必需消费
+└─ 消费增长趋势
+
+支出模式：
+├─ 支出稳定性（波动系数）
+├─ 冲动消费占比
+├─ 超前消费倾向
+└─ 支出控制能力
+```
+
+**衍生特征：**
+```python
+capacity_expenditure = {
+    # 固定支出
+    'monthly_rent_or_mortgage': '月租金/房贷月供',
+    'dependent_cnt': '赡养人口数',
+    'estimated_family_expense': '预估家庭支出 = 赡养人口 × 人均消费',
+
+    # 消费支出
+    'avg_monthly_consumption': '月均消费金额',
+    'consumption_growth_6m': '近6月消费增长率',
+    'luxury_consumption_ratio': '非必需消费占比',
+
+    # 支出健康度
+    'consumption_volatility': '消费波动系数',
+    'impulse_buying_ratio': '冲动消费占比',
+    'overspending_flag': '超前消费标志（消费>收入）',
+
+    # 可支配收入（核心特征）
+    'disposable_income': '可支配收入 = 收入 - 负债月供 - 固定支出',
+    'disposable_income_ratio': '可支配收入比率 = 可支配收入 / 收入',
+    'repayment_capacity': '还款能力 = 可支配收入 / 本次申请月供'
+}
+```
+
+---
+
+### C3: Capital（资本 - 资产实力）
+
+**核心问题：** 这个人有没有家底？资产储备如何？
+
+**业务逻辑：**
+```
+资产是还款的最后保障：
+- 资产多 → 抗风险能力强，可以变现还款
+- 资产少 → 一旦收入中断，立即违约
+- 资产增长 → 财富积累能力强
+- 资产缩水 → 财务状况恶化
+```
+
+#### 3.1 固定资产（Fixed Assets）
+
+**直接特征：**
+```
+房产：
+├─ 是否有房（自有/租赁）
+├─ 房产数量
+├─ 房产价值
+├─ 房产位置（一线/二线/三线城市）
+└─ 房产抵押情况（是否已抵押）
+
+车产：
+├─ 是否有车
+├─ 车辆数量
+├─ 车辆价值
+├─ 车辆品牌/型号
+└─ 车辆抵押情况
+```
+
+**衍生特征：**
+```python
+capital_fixed_assets = {
+    # 房产特征
+    'has_house': '是否有房（0/1）',
+    'house_cnt': '房产数量',
+    'house_value': '房产总价值',
+    'house_location_tier': '房产所在城市等级',
+    'house_mortgage_ratio': '房产抵押比例 = 房贷余额 / 房产价值',
+    'house_equity': '房产净值 = 房产价值 - 房贷余额',
+
+    # 车产特征
+    'has_car': '是否有车（0/1）',
+    'car_cnt': '车辆数量',
+    'car_value': '车辆总价值',
+    'car_brand_tier': '车辆品牌等级',
+
+    # 固定资产综合
+    'fixed_assets_total': '固定资产总值 = 房产净值 + 车辆价值',
+    'fixed_assets_to_income': '固定资产/年收入',
+    'assets_growth': '资产增长率（与历史对比）'
+}
+```
+
+#### 3.2 金融资产（Financial Assets）
+
+**直接特征：**
+```
+存款：
+├─ 活期存款余额
+├─ 定期存款余额
+├─ 存款稳定性（是否有规律存款）
+└─ 存款余额趋势
+
+投资：
+├─ 基金/股票/理财产品
+├─ 投资金额
+├─ 投资收益率
+└─ 投资风险偏好
+
+保险：
+├─ 商业保险数量
+├─ 保险年缴费金额
+└─ 保险覆盖范围
+```
+
+**衍生特征：**
+```python
+capital_financial_assets = {
+    # 存款特征
+    'deposit_balance': '存款余额',
+    'deposit_stability': '存款稳定性（近6月波动系数）',
+    'avg_monthly_saving': '月均储蓄金额',
+    'deposit_growth_trend': '存款增长趋势',
+
+    # 投资特征
+    'investment_balance': '投资资产余额',
+    'investment_return': '投资收益率',
+    'investment_risk_level': '投资风险偏好',
+
+    # 金融资产综合
+    'financial_assets_total': '金融资产总额 = 存款 + 投资',
+    'liquid_assets': '流动资产 = 活期存款 + 可快速变现投资',
+    'liquid_assets_to_loan': '流动资产/本次申请金额',
+    'financial_cushion_months': '财务缓冲月数 = 流动资产 / 月支出',
+
+    # 财富管理能力
+    'wealth_accumulation_rate': '财富积累率 = 资产增长 / 收入',
+    'savings_rate': '储蓄率 = 月均储蓄 / 月收入'
+}
+```
+
+---
+
+### C4: Collateral（抵押 - 担保措施）
+
+**核心问题：** 如果还不起，能拿什么抵押？有什么保障？
+
+**业务逻辑：**
+```
+抵押降低风险：
+- 有抵押 → 即使违约，也能回收部分资金
+- 无抵押 → 违约即100%损失
+- 抵押物价值高 → 可以给更高额度
+- 抵押物价值低/难变现 → 保障作用有限
+```
+
+#### 4.1 抵押物（Collateral Assets）
+
+**直接特征：**
+```
+抵押物类型：
+├─ 房产抵押
+├─ 车辆抵押
+├─ 设备抵押（企业）
+├─ 存单质押
+└─ 股权质押
+
+抵押物价值：
+├─ 抵押物评估价值
+├─ 抵押率（贷款金额/抵押物价值）
+├─ 抵押物流动性（易变现 vs 难变现）
+└─ 抵押物价值波动性
+```
+
+**衍生特征：**
+```python
+collateral_assets = {
+    # 基础特征
+    'has_collateral': '是否有抵押（0/1）',
+    'collateral_type': '抵押物类型',
+    'collateral_value': '抵押物评估价值',
+
+    # 抵押比率
+    'ltv_ratio': 'LTV（贷款价值比）= 贷款金额 / 抵押物价值',
+    'collateral_coverage': '抵押覆盖率 = 抵押物价值 / 贷款金额',
+
+    # 抵押物质量
+    'collateral_liquidity_score': '抵押物流动性评分',
+    'collateral_volatility': '抵押物价值波动性',
+    'collateral_depreciation_rate': '抵押物折旧率',
+
+    # 抵押风险
+    'over_collateralized_flag': '超额抵押标志（抵押物价值>150%贷款）',
+    'under_collateralized_flag': '抵押不足标志（抵押物价值<80%贷款）'
+}
+```
+
+#### 4.2 担保措施（Guarantee）
+
+**直接特征：**
+```
+担保人：
+├─ 是否有担保人
+├─ 担保人数量
+├─ 担保人资质（信用/收入/资产）
+├─ 担保人关系（直系亲属/朋友/企业）
+└─ 担保责任类型（连带/一般）
+
+其他保障：
+├─ 保证金
+├─ 保险（信用保险/财产保险）
+├─ 共同借款人
+└─ 第三方回购担保
+```
+
+**衍生特征：**
+```python
+collateral_guarantee = {
+    # 担保人特征
+    'has_guarantor': '是否有担保人（0/1）',
+    'guarantor_cnt': '担保人数量',
+    'guarantor_credit_score': '担保人信用评分',
+    'guarantor_income': '担保人收入',
+    'guarantor_relationship': '担保人关系',
+
+    # 担保质量
+    'guarantee_strength': '担保强度 = f(担保人资质, 担保责任类型)',
+    'guarantee_coverage': '担保覆盖率 = 担保额 / 贷款金额',
+
+    # 其他保障
+    'deposit_amount': '保证金金额',
+    'insurance_coverage': '保险覆盖金额',
+    'has_co_borrower': '是否有共同借款人（0/1）',
+
+    # 综合保障
+    'total_protection': '总保障 = 抵押物价值 + 担保额 + 保证金',
+    'protection_ratio': '保障比率 = 总保障 / 贷款金额'
+}
+```
+
+---
+
+### C5: Conditions（环境 - 外部条件）
+
+**核心问题：** 外部环境如何？宏观/行业/区域风险如何？
+
+**业务逻辑：**
+```
+外部环境影响还款能力：
+- 经济繁荣 → 收入增长，还款能力强
+- 经济衰退 → 失业风险高，还款能力弱
+- 行业景气 → 职业稳定，收入有保障
+- 行业衰退 → 裁员风险高，收入不稳定
+```
+
+#### 5.1 宏观经济环境（Macro Conditions）
+
+**外部数据特征：**
+```
+宏观经济指标：
+├─ GDP增长率
+├─ 失业率
+├─ 通货膨胀率
+├─ 利率水平
+└─ 汇率水平（跨境贷款）
+
+经济周期：
+├─ 当前经济周期阶段（繁荣/衰退/萧条/复苏）
+├─ 政策周期（宽松/紧缩）
+└─ 经济预期指数
+```
+
+**衍生特征：**
+```python
+conditions_macro = {
+    # 宏观指标
+    'gdp_growth_rate': 'GDP增长率',
+    'unemployment_rate': '失业率',
+    'inflation_rate': '通货膨胀率',
+    'interest_rate': '基准利率',
+
+    # 经济周期
+    'economic_cycle_stage': '经济周期阶段',
+    'policy_cycle': '政策周期（宽松/紧缩）',
+
+    # 宏观风险
+    'macro_risk_score': '宏观经济风险评分',
+    'recession_probability': '经济衰退概率'
+}
+```
+
+#### 5.2 行业环境（Industry Conditions）
+
+**行业数据特征：**
+```
+行业景气度：
+├─ 行业增长率
+├─ 行业利润率
+├─ 行业集中度
+├─ 行业政策支持度
+└─ 行业未来预期
+
+行业风险：
+├─ 行业裁员率
+├─ 行业破产率
+├─ 行业技术变革风险（如：AI替代风险）
+└─ 行业监管风险
+```
+
+**衍生特征：**
+```python
+conditions_industry = {
+    # 行业景气度
+    'industry_growth_rate': '所在行业增长率',
+    'industry_profit_margin': '行业利润率',
+    'industry_policy_support': '行业政策支持度',
+
+    # 行业风险
+    'industry_layoff_rate': '行业裁员率',
+    'industry_bankruptcy_rate': '行业企业破产率',
+    'industry_disruption_risk': '行业技术变革风险',
+
+    # 行业稳定性
+    'industry_stability_score': '行业稳定性评分',
+    'industry_outlook': '行业前景评级'
+}
+```
+
+#### 5.3 区域环境（Regional Conditions）
+
+**区域数据特征：**
+```
+区域经济：
+├─ 区域GDP
+├─ 区域人均收入
+├─ 区域失业率
+├─ 区域房价水平
+└─ 区域消费水平
+
+区域风险：
+├─ 区域信贷违约率
+├─ 区域欺诈率
+├─ 区域人口流动性
+└─ 区域政策风险（如：限购/限贷）
+```
+
+**衍生特征：**
+```python
+conditions_regional = {
+    # 区域经济
+    'region_gdp': '所在区域GDP',
+    'region_income_per_capita': '区域人均收入',
+    'region_unemployment_rate': '区域失业率',
+    'region_house_price': '区域房价水平',
+
+    # 区域风险
+    'region_default_rate': '区域信贷违约率',
+    'region_fraud_rate': '区域欺诈率',
+    'region_risk_level': '区域风险等级',
+
+    # 区域匹配
+    'income_vs_region_avg': '个人收入 vs 区域平均收入',
+    'living_cost_pressure': '生活成本压力 = 区域消费水平 / 个人收入'
+}
+```
+
+---
+
+## 🔄 5C综合应用模式
+
+### 模式1：5C综合评分卡
+
+**核心思想：** 将5个C的特征加权综合，形成信用评分
+
+**公式：**
+```
+信用评分 = w1 × Character_Score +
+           w2 × Capacity_Score +
+           w3 × Capital_Score +
+           w4 × Collateral_Score +
+           w5 × Conditions_Score
+
+其中：
+- Character_Score: 品德评分（0-100）
+- Capacity_Score: 能力评分（0-100）
+- Capital_Score: 资本评分（0-100）
+- Collateral_Score: 抵押评分（0-100）
+- Conditions_Score: 环境评分（0-100）
+
+权重建议（可根据业务调整）：
+- w1 (Character) = 0.30  （最重要：意愿>能力）
+- w2 (Capacity) = 0.30   （同样重要：能力是基础）
+- w3 (Capital) = 0.20    （资产是保障）
+- w4 (Collateral) = 0.10 （抵押降低风险）
+- w5 (Conditions) = 0.10 （环境影响有限）
+```
+
+**实现示例：**
+```python
+def calculate_5c_score(features):
+    """5C综合评分计算"""
+
+    # C1: Character（品德）
+    character_score = (
+        0.5 * (100 - features['overdue_rate'] * 100) +  # 无逾期=100分
+        0.3 * features['credit_history_score'] +         # 信用历史评分
+        0.2 * (100 - features['multi_loan_cnt'] * 10)   # 多头借贷扣分
+    )
+
+    # C2: Capacity（能力）
+    capacity_score = (
+        0.4 * normalize(features['disposable_income']) +  # 可支配收入
+        0.3 * (100 - features['dti_ratio'] * 100) +      # DTI越低越好
+        0.3 * features['income_stability_score']          # 收入稳定性
+    )
+
+    # C3: Capital（资本）
+    capital_score = (
+        0.5 * normalize(features['financial_assets_total']) +
+        0.3 * normalize(features['fixed_assets_total']) +
+        0.2 * features['wealth_accumulation_rate']
+    )
+
+    # C4: Collateral（抵押）
+    collateral_score = (
+        0.6 * features['collateral_coverage'] * 100 +  # 抵押覆盖率
+        0.4 * features['guarantee_strength']            # 担保强度
+    ) if features['has_collateral'] else 0
+
+    # C5: Conditions（环境）
+    conditions_score = (
+        0.4 * (100 - features['macro_risk_score']) +
+        0.3 * features['industry_stability_score'] +
+        0.3 * (100 - features['region_risk_level'])
+    )
+
+    # 加权综合
+    total_score = (
+        0.30 * character_score +
+        0.30 * capacity_score +
+        0.20 * capital_score +
+        0.10 * collateral_score +
+        0.10 * conditions_score
+    )
+
+    return total_score
+```
+
+---
+
+### 模式2：5C短板检测
+
+**核心思想：** 识别5C中的薄弱环节，针对性补充特征
+
+**检测逻辑：**
+```
+短板原则："木桶效应" - 最短的那块板决定风险
+
+检测方法：
+1. 分别计算5个C的评分
+2. 识别最低分的C（短板）
+3. 针对短板维度深挖特征
+4. 设计补偿机制（如：能力不足但有抵押）
+```
+
+**实现示例：**
+```python
+def detect_5c_weakness(scores):
+    """检测5C短板"""
+    c_scores = {
+        'Character': scores['character_score'],
+        'Capacity': scores['capacity_score'],
+        'Capital': scores['capital_score'],
+        'Collateral': scores['collateral_score'],
+        'Conditions': scores['conditions_score']
+    }
+
+    # 找出最低分的C
+    weakest_c = min(c_scores, key=c_scores.get)
+    weakest_score = c_scores[weakest_c]
+
+    # 判断是否可补偿
+    if weakest_c in ['Capacity', 'Capital']:
+        # 能力/资本不足，看是否有抵押补偿
+        if scores['collateral_score'] > 80:
+            return {'weakness': weakest_c, 'compensated': True}
+
+    if weakest_c == 'Character':
+        # 品德问题，难以补偿
+        return {'weakness': 'Character', 'compensated': False, 'action': 'REJECT'}
+
+    return {'weakness': weakest_c, 'compensated': False, 'action': 'REVIEW'}
+```
+
+---
+
+### 模式3：5C交叉验证
+
+**核心思想：** 5C之间应该相互印证，如果矛盾则可能有问题
+
+**验证逻辑：**
+```
+合理组合：
+✅ 高收入 + 高资产 + 好信用（一致，可信）
+✅ 低收入 + 低资产 + 无逾期（一致，谨慎用户）
+
+异常组合：
+❌ 高收入 + 低资产（钱都去哪了？过度消费？）
+❌ 高资产 + 多头借贷（有钱为何借这么多？套现？）
+❌ 低收入 + 高消费（收入支撑不了消费，风险高）
+❌ 好地区 + 高逾期率（个人问题，不是环境问题）
+```
+
+**实现示例：**
+```python
+def cross_validate_5c(features):
+    """5C交叉验证，检测异常组合"""
+    anomalies = []
+
+    # 验证1：高收入但低资产
+    if features['income'] > 10000 and features['financial_assets'] < 50000:
+        anomalies.append({
+            'type': 'income_asset_mismatch',
+            'reason': '高收入但资产积累少，可能过度消费或隐藏资产',
+            'risk_level': 'medium'
+        })
+
+    # 验证2：高资产但多头借贷
+    if features['total_assets'] > 500000 and features['multi_loan_cnt'] > 3:
+        anomalies.append({
+            'type': 'asset_debt_mismatch',
+            'reason': '高资产但多头借贷，可能资产不可变现或套现行为',
+            'risk_level': 'high'
+        })
+
+    # 验证3：低收入但高消费
+    if features['consumption'] > features['income'] * 1.2:
+        anomalies.append({
+            'type': 'income_consumption_mismatch',
+            'reason': '消费超过收入，可能以贷养贷',
+            'risk_level': 'high'
+        })
+
+    # 验证4：优质地区但个人信用差
+    if features['region_risk_level'] < 30 and features['character_score'] < 50:
+        anomalies.append({
+            'type': 'region_character_mismatch',
+            'reason': '所在地区优质但个人信用差，个人因素导致风险',
+            'risk_level': 'high'
+        })
+
+    return anomalies
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用5C框架？
+
+**触发条件：**
+1. 用户明确说"信贷/贷款/信用卡业务"
+2. 用户的目标是"违约预测/信用评分/额度管理"
+3. 用户数据包含"收入/资产/信用历史"等字段
+4. 用户说"不知道信贷特征怎么做"
+
+**引导话术：**
+```
+CHRIS: 我看到你的业务是信贷风险评估，这个场景非常适合用
+       经典的"5C信用分析框架"。
+
+       💡 5C框架从5个维度全面评估信用：
+       1. Character（品德）- 愿不愿意还？
+       2. Capacity（能力）- 有没有能力还？
+       3. Capital（资本）- 有没有家底？
+       4. Collateral（抵押）- 有什么保障？
+       5. Conditions（环境）- 外部环境如何？
+
+       📊 根据你的数据字段，我初步判断：
+       - C1 Character: 可用【信用历史、征信查询】字段
+       - C2 Capacity: 可用【收入、负债、职业】字段
+       - C3 Capital: 可用【资产】字段
+       - C4 Collateral: 数据中暂无，需要补充
+       - C5 Conditions: 需要引入外部数据（行业/区域风险）
+
+       🤔 你想从哪个C开始深挖特征？
+       还是我帮你设计一个完整的5C特征体系？
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用5C框架时：**
+
+- [ ] 是否覆盖了全部5个C？（不要遗漏）
+- [ ] 是否识别了5C的短板？
+- [ ] 是否进行了5C交叉验证？（检测矛盾）
+- [ ] 是否根据业务调整了5C权重？
+- [ ] 是否考虑了5C之间的补偿机制？
+
+**记住：**
+> "5C不是孤立的5个维度，而是相互关联、相互验证的整体。
+> Character是核心，Capacity是基础，Capital是保障，
+> Collateral是补偿，Conditions是背景。"
+
+---
+
+**CHRIS Feature Engineering System**
+L2 核心业务框架 - 5C信用分析
+版本 3.0 | 2025年1月

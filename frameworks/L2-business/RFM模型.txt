@@ -1,0 +1,712 @@
+# L2 核心业务框架 - RFM模型（RFM Model)
+
+## 📌 框架定位
+
+**本质：** 用户行为分析的经典框架，通过3个维度评估用户价值和状态
+
+**适用场景：**
+- 用户分层/用户画像
+- 流失预警
+- 营销策略制定
+- 用户生命周期管理
+- 任何有"时间+频次+金额"数据的场景
+
+**核心思想：**
+> "用户价值取决于3个维度：
+> Recency（最近一次）- 多久没来了？
+> Frequency（频率）- 来得多不多？
+> Monetary（金额）- 花得多不多？"
+
+---
+
+## 🎯 RFM三维度详解
+
+### R - Recency（最近性）
+
+**核心问题：** 用户最近一次行为距今多久？
+
+**业务逻辑：**
+```
+Recency越小越好：
+- R小（刚来过）→ 活跃用户，转化率高
+- R大（很久没来）→ 流失风险高，唤回难度大
+
+为什么R重要？
+→ 最近行为是未来行为的最强预测因子
+→ R越大，用户越可能已经转投竞品
+→ R是用户生命周期阶段的重要信号
+```
+
+#### R维度特征设计
+
+**基础特征：**
+```
+绝对Recency：
+├─ days_since_last_purchase: 距离最近一次购买天数
+├─ days_since_last_login: 距离最近一次登录天数
+├─ days_since_last_active: 距离最近一次活跃天数
+└─ days_since_registration: 距离注册天数（生命周期位置）
+
+相对Recency：
+├─ recency_ratio: 当前R / 历史平均R（R是否在变大？）
+├─ recency_vs_lifecycle: 当前R / 生命周期总长度
+├─ recency_percentile: R在所有用户中的分位数
+└─ recency_change: 近期R的变化趋势
+```
+
+**衍生特征：**
+```python
+recency_features = {
+    # 基础R
+    'days_since_last_txn': '距离最近一次交易天数',
+    'days_since_last_login': '距离最近一次登录天数',
+    'days_since_last_active': '距离最近一次活跃天数',
+
+    # 相对R
+    'recency_ratio': '当前R / 历史平均R',
+    'recency_acceleration': 'R加速度 = (R_now - R_avg) / R_avg',
+    'recency_vs_lifecycle': '当前R / 总生命周期长度',
+    'recency_percentile': 'R分位数（在所有用户中的排名）',
+
+    # R趋势
+    'recency_worsening_trend': 'R恶化趋势（R越来越大）',
+    'recency_volatility': 'R波动性（R是否稳定）',
+
+    # R分段
+    'recency_segment': 'R分段（0-7天/8-30天/31-90天/90天+）',
+    'is_recent_user': '是否近期用户（R<7天）',
+    'is_churning_user': '是否流失中用户（R>90天）',
+
+    # R异常
+    'recency_abnormal_long': 'R异常长（>3倍标准差）',
+    'first_time_long_absence': '首次长时间未活跃'
+}
+```
+
+**R维度的业务应用：**
+```
+用户分层：
+├─ R < 7天: 高活跃用户（重点维护）
+├─ 7 <= R < 30天: 一般活跃用户
+├─ 30 <= R < 90天: 低活跃用户（预警）
+└─ R >= 90天: 流失用户（挽回）
+
+营销策略：
+├─ R小: 推荐新品、交叉销售
+├─ R中: 发送活动提醒
+└─ R大: 发送唤回优惠券
+
+流失预警：
+├─ R突然变大（R_now > 2 × R_avg）→ 流失风险高
+├─ R持续增长（R趋势>0）→ 逐渐流失中
+└─ R波动大（R_std高）→ 不稳定用户
+```
+
+---
+
+### F - Frequency（频率）
+
+**核心问题：** 用户行为频次如何？来得多不多？
+
+**业务逻辑：**
+```
+Frequency越高越好：
+- F高（经常来）→ 粘性强，忠诚度高
+- F低（偶尔来）→ 粘性弱，容易流失
+
+为什么F重要？
+→ F体现用户粘性和产品依赖度
+→ F高的用户生命周期价值（LTV）更高
+→ F是用户忠诚度的核心指标
+```
+
+#### F维度特征设计
+
+**基础特征：**
+```
+绝对Frequency：
+├─ total_txn_cnt: 历史总交易次数
+├─ txn_cnt_30d: 近30天交易次数
+├─ txn_cnt_90d: 近90天交易次数
+├─ txn_cnt_per_month: 月均交易次数
+└─ active_days_cnt: 活跃天数
+
+相对Frequency：
+├─ frequency_ratio: 近期F / 历史F（F是否在增长？）
+├─ frequency_vs_tenure: F / 生命周期月数（单位时间频率）
+├─ frequency_percentile: F在所有用户中的分位数
+└─ frequency_growth_rate: F增长率
+```
+
+**衍生特征：**
+```python
+frequency_features = {
+    # 基础F
+    'total_txn_cnt': '历史总交易次数',
+    'txn_cnt_7d': '近7天交易次数',
+    'txn_cnt_30d': '近30天交易次数',
+    'txn_cnt_90d': '近90天交易次数',
+    'txn_per_month': '月均交易次数',
+    'active_days_cnt': '活跃天数',
+    'active_days_ratio': '活跃天数占比 = 活跃天数 / 总天数',
+
+    # 相对F
+    'frequency_ratio': '近期F / 历史F',
+    'frequency_acceleration': 'F加速度 = (F_recent - F_history) / F_history',
+    'frequency_per_active_day': '日均频率 = 总次数 / 活跃天数',
+    'frequency_percentile': 'F分位数',
+
+    # F趋势
+    'frequency_trend': 'F趋势（线性回归斜率）',
+    'frequency_growth_rate': 'F增长率',
+    'frequency_declining_flag': 'F下降标志（近期F < 历史F）',
+
+    # F稳定性
+    'frequency_volatility': 'F波动性（标准差）',
+    'frequency_regularity': 'F规律性（是否有固定频率）',
+    'max_consecutive_active_days': '最大连续活跃天数',
+    'max_gap_days': '最大间隔天数',
+
+    # F分段
+    'frequency_segment': 'F分段（低频/中频/高频）',
+    'is_high_frequency_user': '是否高频用户（F>75分位数）',
+    'is_power_user': '是否超级用户（F>95分位数）',
+
+    # F异常
+    'frequency_sudden_drop': 'F突然下降（>50%）',
+    'frequency_spike': 'F突然激增（>200%）'
+}
+```
+
+**F维度的业务应用：**
+```
+用户分层：
+├─ F高: 核心用户（重点维护，VIP服务）
+├─ F中: 普通用户（促进活跃）
+└─ F低: 边缘用户（激活召回）
+
+产品优化：
+├─ F高但R大: 曾经的核心用户流失（高优先级挽回）
+├─ F低但R小: 新用户或偶发用户（培养频率）
+└─ F波动大: 不稳定用户（找到波动原因）
+
+流失预警：
+├─ F下降趋势 → 粘性降低
+├─ F突然腰斩 → 可能遇到问题
+└─ F持续低迷 → 产品不适配
+```
+
+---
+
+### M - Monetary（金额）
+
+**核心问题：** 用户花了多少钱？价值如何？
+
+**业务逻辑：**
+```
+Monetary越高越好：
+- M高（花钱多）→ 高价值用户
+- M低（花钱少）→ 低价值用户
+
+为什么M重要？
+→ M直接体现用户价值（营收贡献）
+→ M是用户支付能力和支付意愿的体现
+→ M是计算LTV的核心输入
+```
+
+#### M维度特征设计
+
+**基础特征：**
+```
+绝对Monetary：
+├─ total_amount: 历史总金额
+├─ amount_30d: 近30天总金额
+├─ amount_90d: 近90天总金额
+├─ avg_amount_per_txn: 平均客单价
+└─ max_amount: 历史最大单笔金额
+
+相对Monetary：
+├─ monetary_ratio: 近期M / 历史M（M是否在增长？）
+├─ monetary_vs_tenure: M / 生命周期月数（月均贡献）
+├─ monetary_percentile: M在所有用户中的分位数
+└─ monetary_growth_rate: M增长率
+```
+
+**衍生特征：**
+```python
+monetary_features = {
+    # 基础M
+    'total_amount': '历史总金额',
+    'amount_7d': '近7天总金额',
+    'amount_30d': '近30天总金额',
+    'amount_90d': '近90天总金额',
+    'avg_order_value': '平均客单价 = 总金额 / 总次数',
+    'max_order_value': '最大单笔金额',
+    'min_order_value': '最小单笔金额',
+
+    # 相对M
+    'monetary_ratio': '近期M / 历史M',
+    'monetary_acceleration': 'M加速度',
+    'monetary_per_month': '月均贡献金额',
+    'monetary_percentile': 'M分位数',
+
+    # M趋势
+    'monetary_trend': 'M趋势（线性回归斜率）',
+    'monetary_growth_rate': 'M增长率',
+    'aov_trend': '客单价趋势',
+    'aov_growth_rate': '客单价增长率',
+
+    # M稳定性
+    'monetary_volatility': 'M波动性（标准差）',
+    'aov_volatility': '客单价波动性',
+    'amount_concentration': '金额集中度（单笔最大金额/总金额）',
+
+    # M分段
+    'monetary_segment': 'M分段（低价值/中价值/高价值）',
+    'is_high_value_user': '是否高价值用户（M>75分位数）',
+    'is_whale_user': '是否鲸鱼用户（M>95分位数）',
+
+    # M异常
+    'monetary_sudden_increase': 'M突然激增（>200%）',
+    'monetary_sudden_decrease': 'M突然下降（>50%）',
+    'aov_abnormal_high': '客单价异常高（>3倍标准差）',
+    'aov_abnormal_low': '客单价异常低（<均值-2倍标准差）'
+}
+```
+
+**M维度的业务应用：**
+```
+用户分层：
+├─ M高: 高价值用户（VIP专享服务）
+├─ M中: 中价值用户（提升客单价）
+└─ M低: 低价值用户（激活消费）
+
+定价策略：
+├─ M高且稳定: 价格不敏感，可推高端产品
+├─ M波动大: 价格敏感，需要促销激励
+└─ M低但F高: 低客单价用户，推荐加购/组合
+
+流失预警：
+├─ M下降但R/F正常 → 客单价下降（收入能力下降？）
+├─ M/F同时下降 → 整体价值下滑
+└─ M突然为0但仍登录 → 浏览不购买（价格/产品问题？）
+```
+
+---
+
+## 🔄 RFM综合应用模式
+
+### 模式1：RFM用户分群（经典8分法）
+
+**核心思想：** 将R/F/M各分为高/低两档，组合成8类用户
+
+**分段规则：**
+```
+高/低标准：
+- R_high: R < 中位数（最近来过）
+- R_low: R >= 中位数（很久没来）
+- F_high: F > 中位数（来得多）
+- F_low: F <= 中位数（来得少）
+- M_high: M > 中位数（花得多）
+- M_low: M <= 中位数（花得少）
+```
+
+**8类用户定义：**
+
+| RFM组合 | 用户类型 | 特征 | 营销策略 |
+|---------|---------|------|---------|
+| **高R高F高M** | 重要价值用户 | 最近来过、来得多、花得多 | VIP服务、专属优惠、新品首发 |
+| **高R高F低M** | 重要发展用户 | 最近来过、来得多、花得少 | 提升客单价、推荐高价值商品 |
+| **高R低F高M** | 重要保持用户 | 最近来过、来得少、花得多 | 提升粘性、增加互动频率 |
+| **高R低F低M** | 新用户/潜力用户 | 最近来过、来得少、花得少 | 新手引导、培养习惯 |
+| **低R高F高M** | 重要挽留用户 | 很久没来、曾来得多、曾花得多 | 高优先级挽回、专属召回优惠 |
+| **低R高F低M** | 一般挽留用户 | 很久没来、曾来得多、曾花得少 | 常规召回、促销活动 |
+| **低R低F高M** | 一般保持用户 | 很久没来、来得少、曾花得多 | 中等优先级召回 |
+| **低R低F低M** | 流失用户 | 很久没来、来得少、花得少 | 低优先级、成本召回 |
+
+**实现代码：**
+```python
+def rfm_segmentation_8(df):
+    """RFM 8分法用户分群"""
+    # 计算RFM
+    df['R'] = (pd.Timestamp.now() - df['last_txn_date']).dt.days
+    df['F'] = df['txn_cnt']
+    df['M'] = df['total_amount']
+
+    # 分为高/低两档
+    df['R_score'] = pd.cut(df['R'], bins=2, labels=['High', 'Low'])  # 注意R越小越好
+    df['F_score'] = pd.cut(df['F'], bins=2, labels=['Low', 'High'])
+    df['M_score'] = pd.cut(df['M'], bins=2, labels=['Low', 'High'])
+
+    # 组合成用户类型
+    df['user_segment'] = df['R_score'] + df['F_score'] + df['M_score']
+
+    # 映射到业务标签
+    segment_map = {
+        'HighHighHigh': '重要价值用户',
+        'HighHighLow': '重要发展用户',
+        'HighLowHigh': '重要保持用户',
+        'HighLowLow': '新用户/潜力用户',
+        'LowHighHigh': '重要挽留用户',
+        'LowHighLow': '一般挽留用户',
+        'LowLowHigh': '一般保持用户',
+        'LowLowLow': '流失用户'
+    }
+    df['user_label'] = df['user_segment'].map(segment_map)
+
+    return df
+```
+
+---
+
+### 模式2：RFM评分卡（精细化5分法）
+
+**核心思想：** 将R/F/M各分为1-5分，组合成125类用户（更精细）
+
+**分段规则：**
+```
+五分位数分段：
+- 5分: Top 20%（最优）
+- 4分: 20%-40%
+- 3分: 40%-60%
+- 2分: 60%-80%
+- 1分: Bottom 20%（最差）
+
+注意：R是反向指标，R越小分数越高
+```
+
+**RFM总分计算：**
+```
+方法1：简单加权求和
+RFM_Score = w_r × R_score + w_f × F_score + w_m × M_score
+
+权重建议（根据业务调整）：
+- 电商/零售: w_r=0.3, w_f=0.3, w_m=0.4 （金额最重要）
+- 社交/内容: w_r=0.4, w_f=0.4, w_m=0.2 （活跃度更重要）
+- 金融/信贷: w_r=0.4, w_f=0.3, w_m=0.3 （近期性最重要）
+
+方法2：字符串拼接
+RFM_Code = str(R_score) + str(F_score) + str(M_score)
+例如："555" = 最优用户, "111" = 最差用户
+```
+
+**实现代码：**
+```python
+def rfm_scoring_5(df, w_r=0.3, w_f=0.3, w_m=0.4):
+    """RFM 5分法评分"""
+    # 计算RFM
+    df['R'] = (pd.Timestamp.now() - df['last_txn_date']).dt.days
+    df['F'] = df['txn_cnt']
+    df['M'] = df['total_amount']
+
+    # 分为5档（R是反向，F/M是正向）
+    df['R_score'] = pd.qcut(df['R'], q=5, labels=[5,4,3,2,1])  # R越小分越高
+    df['F_score'] = pd.qcut(df['F'], q=5, labels=[1,2,3,4,5], duplicates='drop')
+    df['M_score'] = pd.qcut(df['M'], q=5, labels=[1,2,3,4,5], duplicates='drop')
+
+    # 计算总分
+    df['RFM_score'] = (
+        w_r * df['R_score'].astype(int) +
+        w_f * df['F_score'].astype(int) +
+        w_m * df['M_score'].astype(int)
+    )
+
+    # RFM编码
+    df['RFM_code'] = (
+        df['R_score'].astype(str) +
+        df['F_score'].astype(str) +
+        df['M_score'].astype(str)
+    )
+
+    return df
+```
+
+---
+
+### 模式3：RFM趋势分析（时间维度）
+
+**核心思想：** 不只看当前RFM，还要看RFM的变化趋势
+
+**趋势特征：**
+```
+R趋势：
+├─ R_trend: R的增长趋势（R越来越大 = 流失中）
+├─ R_acceleration: R增长加速度
+└─ R_stage: R所处阶段（稳定/恶化/急剧恶化）
+
+F趋势：
+├─ F_trend: F的增长趋势（F增长 = 粘性提升）
+├─ F_acceleration: F增长加速度
+└─ F_stage: F所处阶段（增长/稳定/下降）
+
+M趋势：
+├─ M_trend: M的增长趋势
+├─ M_acceleration: M增长加速度
+└─ M_stage: M所处阶段（增长/稳定/下降）
+```
+
+**趋势组合分析：**
+```
+健康信号：
+✅ R稳定/下降（越来越近） + F增长 + M增长 → 用户成长中
+✅ R稳定 + F稳定 + M稳定 → 稳定用户
+
+预警信号：
+⚠️ R增长（越来越远） + F下降 → 流失预警
+⚠️ R稳定 + F稳定 + M下降 → 消费降级
+⚠️ R增长 + F下降 + M下降 → 三重下降，高风险流失
+
+矛盾信号（需深挖）：
+🤔 R增长 + F增长 → 矛盾（来得多但最近没来？）
+🤔 R下降 + F下降 + M增长 → 最近来了但频率低、客单价高（偶发大额？）
+```
+
+**实现代码：**
+```python
+def rfm_trend_analysis(df):
+    """RFM趋势分析"""
+    # 计算近期vs历史RFM
+    df['R_recent'] = df['days_since_last_txn']
+    df['R_history'] = df['avg_gap_days']
+    df['R_trend'] = (df['R_recent'] - df['R_history']) / df['R_history']  # >0表示R恶化
+
+    df['F_recent'] = df['txn_cnt_30d']
+    df['F_history'] = df['txn_per_month']
+    df['F_trend'] = (df['F_recent'] - df['F_history']) / df['F_history']  # >0表示F增长
+
+    df['M_recent'] = df['amount_30d']
+    df['M_history'] = df['amount_per_month']
+    df['M_trend'] = (df['M_recent'] - df['M_history']) / df['M_history']  # >0表示M增长
+
+    # 趋势标签
+    def trend_label(trend_value):
+        if trend_value > 0.2:
+            return 'increasing'
+        elif trend_value < -0.2:
+            return 'decreasing'
+        else:
+            return 'stable'
+
+    df['R_stage'] = df['R_trend'].apply(trend_label)
+    df['F_stage'] = df['F_trend'].apply(trend_label)
+    df['M_stage'] = df['M_trend'].apply(trend_label)
+
+    # 综合健康度
+    def health_score(row):
+        score = 0
+        # R恶化扣分
+        if row['R_stage'] == 'increasing':
+            score -= 2
+        elif row['R_stage'] == 'decreasing':
+            score += 2
+
+        # F增长加分
+        if row['F_stage'] == 'increasing':
+            score += 1
+        elif row['F_stage'] == 'decreasing':
+            score -= 1
+
+        # M增长加分
+        if row['M_stage'] == 'increasing':
+            score += 1
+        elif row['M_stage'] == 'decreasing':
+            score -= 1
+
+        return score
+
+    df['rfm_health_score'] = df.apply(health_score, axis=1)
+    # score>0: 健康, score=0: 中性, score<0: 预警
+
+    return df
+```
+
+---
+
+### 模式4：RFM交叉特征（特征工程视角）
+
+**核心思想：** RFM不仅可以单独使用，还可以交叉组合生成强特征
+
+**交叉特征设计：**
+
+#### 4.1 R×F交叉
+```python
+rf_cross_features = {
+    # R和F的比率关系
+    'recency_frequency_ratio': 'R / F （间隔天数/总次数）',
+    'avg_gap_days': 'R / (F-1) （平均间隔天数）',
+
+    # R和F的分段交叉
+    'rf_segment': 'R分段 × F分段',
+    # 如: "高R低F" = 很久没来+来得少 = 高流失风险
+    #     "低R高F" = 最近来过+来得多 = 核心用户
+
+    # R和F的趋势交叉
+    'rf_trend_match': 'R趋势 × F趋势',
+    # 如: "R增长+F下降" = 双重预警
+    #     "R下降+F增长" = 健康成长
+}
+```
+
+#### 4.2 R×M交叉
+```python
+rm_cross_features = {
+    # R和M的比率关系
+    'recency_monetary_intensity': 'M / R （单位时间金额强度）',
+
+    # R和M的匹配度
+    'rm_mismatch_score': 'R很大但M很高 = 异常（沉睡鲸鱼用户，需唤回）',
+
+    # R和M的分段交叉
+    'rm_segment': 'R分段 × M分段',
+    # 如: "高R高M" = 曾经的高价值用户流失（高优先级）
+    #     "低R高M" = 当前高价值用户（重点维护）
+}
+```
+
+#### 4.3 F×M交叉
+```python
+fm_cross_features = {
+    # F和M的比率关系（核心特征）
+    'avg_order_value': 'M / F （平均客单价）',
+    'total_value_per_active_day': 'M / 活跃天数',
+
+    # F和M的匹配度
+    'fm_mismatch_score': 'F高但M低 = 薅羊毛用户？',
+    'fm_efficiency': '单次行为价值 = M / F',
+
+    # F和M的分段交叉
+    'fm_segment': 'F分段 × M分段',
+    # 如: "高F低M" = 高频低价值（提升客单价）
+    #     "低F高M" = 低频高价值（提升粘性）
+}
+```
+
+#### 4.4 R×F×M三维交叉
+```python
+rfm_cross_features = {
+    # 三维交叉比率
+    'rfm_efficiency': 'M / (R × F) （综合效率）',
+    'value_density': 'M / (生命周期天数 × F) （价值密度）',
+
+    # 三维不匹配检测
+    'rfm_anomaly_score': '检测RFM组合是否异常',
+    # 如: "高R + 高F + 高M" = 异常（曾经来得多花得多，现在很久没来）
+    #     "低R + 低F + 高M" = 异常（最近来了，来得少，但花得多）
+
+    # 三维用户价值
+    'ltv_estimation': '基于RFM的LTV预估 = f(R, F, M, 趋势)',
+    'churn_risk_score': '基于RFM的流失风险 = f(R趋势, F趋势, M趋势)'
+}
+```
+
+---
+
+## 🚀 RFM的扩展变种
+
+### 变种1：RFMD（加入多样性）
+
+```
+D = Diversity（多样性）
+
+为什么加D？
+→ 同样花100元，买10种商品 vs 买1种商品，粘性不同
+→ 多样性高 = 需求广泛，平台依赖度高
+
+D的特征：
+├─ category_cnt: 购买品类数
+├─ merchant_cnt: 交易商户数
+├─ product_diversity: 商品多样性（熵）
+└─ category_concentration: 品类集中度（HHI）
+```
+
+### 变种2：RFMT（加入时间模式）
+
+```
+T = Time Pattern（时间模式）
+
+为什么加T？
+→ 同样每月来4次，固定每周1次 vs 随机分布，稳定性不同
+→ 时间规律性高 = 习惯养成好
+
+T的特征：
+├─ time_regularity: 时间规律性
+├─ preferred_time_slot: 偏好时段
+├─ weekday_ratio: 工作日占比
+└─ time_entropy: 时间分布熵
+```
+
+### 变种3：RFME（加入参与度）
+
+```
+E = Engagement（参与度）
+
+为什么加E？
+→ 购买是结果，浏览/点击/加购是过程
+→ 参与度高 = 兴趣度高，转化潜力大
+
+E的特征：
+├─ page_view_cnt: 浏览次数
+├─ click_cnt: 点击次数
+├─ add_to_cart_cnt: 加购次数
+├─ engagement_score: 参与度评分
+└─ conversion_rate: 转化率 = 购买次数 / 浏览次数
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用RFM框架？
+
+**触发条件：**
+1. 用户数据有"时间+频次+金额"字段
+2. 用户的目标是"用户分层/流失预警/用户价值评估"
+3. 用户提到"用户活跃度/用户价值/用户留存"
+4. 用户的业务是电商/零售/金融/SaaS等有复购场景
+
+**引导话术：**
+```
+CHRIS: 我看到你的数据有交易时间、交易次数和交易金额，
+       这个场景非常适合用"RFM模型"。
+
+       💡 RFM是用户分析的经典框架，从3个维度评估用户：
+       - R (Recency): 最近一次交易距今多久？
+       - F (Frequency): 交易频次如何？
+       - M (Monetary): 交易金额如何？
+
+       📊 基于RFM，我们可以：
+       1. 用户分群（8分法/5分法）
+       2. 流失预警（R恶化+F下降）
+       3. 价值评估（RFM综合评分）
+       4. 精准营销（不同RFM群体不同策略）
+
+       🤔 你想用RFM做什么？
+       1. 用户分群（找出核心用户/流失用户）
+       2. 流失预警（提前识别流失风险）
+       3. 特征工程（生成RFM交叉特征）
+       4. 还是其他？
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用RFM框架时：**
+
+- [ ] 是否定义清楚了R/F/M的计算窗口期？（7天/30天/90天/全部？）
+- [ ] 是否考虑了业务特性调整RFM权重？
+- [ ] 是否分析了RFM的趋势，而不只是静态值？
+- [ ] 是否设计了RFM的交叉特征？
+- [ ] 是否根据业务场景考虑扩展RFM（加入D/T/E）？
+- [ ] 是否进行了RFM异常检测（不合理的组合）？
+
+**记住：**
+> "RFM不是简单的3个数字，而是用户行为的全息投影。
+> R体现活跃度，F体现粘性，M体现价值，
+> 三者结合才能全面理解用户状态。"
+
+---
+
+**CHRIS Feature Engineering System**
+L2 核心业务框架 - RFM模型
+版本 3.0 | 2025年1月

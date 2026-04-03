@@ -1,0 +1,527 @@
+# L3 数据形态框架 - 交互比率（Interaction & Ratios）
+
+## 📌 框架定位
+
+**本质：** 通过数学运算组合原始特征，创造新的业务语义
+
+**适用场景：**
+- 特征增强（从少量特征生成更多特征）
+- 业务比率计算（收入/支出、转化率等）
+- 特征交叉（A×B产生新维度）
+- 相对指标构建（相对于平均/历史）
+
+**核心思想：**
+> "单个特征信息有限，组合后信息爆炸：
+> Ratio（比率）- A/B相对关系
+> Difference（差值）- A-B绝对差异
+> Product（乘积）- A×B交互效应
+> Rank（排序）- 相对位置"
+
+---
+
+## 🎯 交互比率四大类型
+
+### 类型1：Ratio（比率特征）
+
+**核心思想：** 两个特征的相对关系
+
+**业务逻辑：**
+```
+比率消除量纲，体现相对关系：
+- 收入/支出 → 财务健康度
+- 点击/曝光 → 点击率
+- 成功/总数 → 成功率
+- 新增/存量 → 增长率
+```
+
+---
+
+#### 1.1 经典业务比率
+
+**特征设计：**
+
+```python
+business_ratios = {
+    # 财务比率
+    'debt_to_income': '负债收入比 = 负债/收入（DTI）',
+    'income_to_expense': '收支比 = 收入/支出',
+    'savings_rate': '储蓄率 = 储蓄/收入',
+    'asset_to_debt': '资产负债比 = 资产/负债',
+
+    # 转化率
+    'conversion_rate': '转化率 = 购买次数/浏览次数',
+    'click_through_rate': '点击率 = 点击/曝光',
+    'add_to_cart_rate': '加购率 = 加购/浏览',
+    'payment_success_rate': '支付成功率 = 成功支付/发起支付',
+
+    # 使用率
+    'credit_utilization': '信用卡使用率 = 已用额度/总额度',
+    'feature_usage_rate': '功能使用率 = 使用功能数/总功能数',
+    'active_days_ratio': '活跃天数占比 = 活跃天数/总天数',
+
+    # 集中度
+    'top1_concentration': 'Top1集中度 = Top1金额/总金额',
+    'herfindahl_index': 'HHI指数 = Σ(市场份额²)（集中度）',
+
+    # 效率比率
+    'average_order_value': '客单价 = 总金额/订单数',
+    'revenue_per_user': '人均收入 = 总收入/用户数',
+    'profit_margin': '利润率 = 利润/收入'
+}
+```
+
+---
+
+#### 1.2 时间维度比率
+
+**特征设计：**
+
+```python
+time_ratios = {
+    # 近期vs历史
+    'recent_vs_history_ratio': '近期/历史比率',
+    'recent_7d_vs_30d': '近7天/近30天',
+    'recent_30d_vs_90d': '近30天/近90天',
+
+    # 增长率
+    'growth_rate': '增长率 = (本期-上期)/上期',
+    'yoy_growth': '同比增长率',
+    'mom_growth': '环比增长率',
+
+    # 加速度比率
+    'acceleration_ratio': '加速度 = 近期增长率/历史增长率',
+
+    # 衰减比率
+    'decay_ratio': '衰减比率 = 近期/峰值'
+}
+```
+
+---
+
+#### 1.3 群体对比比率
+
+**特征设计：**
+
+```python
+peer_comparison_ratios = {
+    # vs平均
+    'vs_mean_ratio': '个体/群体均值',
+    'vs_median_ratio': '个体/群体中位数',
+
+    # vs同类
+    'vs_peer_same_age': '个体/同年龄段均值',
+    'vs_peer_same_city': '个体/同城市均值',
+    'vs_peer_same_occupation': '个体/同职业均值',
+
+    # 超越率
+    'percentile_score': '超越百分比（分位数）',
+    'outperformance_ratio': '超越倍数 = 个体/同类均值'
+}
+```
+
+**计算示例：**
+```python
+def calculate_ratio_features(user_data, population_data):
+    """计算比率特征"""
+
+    # 业务比率
+    dti = user_data['debt'] / user_data['income'] if user_data['income'] > 0 else 0
+    conversion_rate = user_data['purchases'] / user_data['pageviews'] if user_data['pageviews'] > 0 else 0
+
+    # 时间比率
+    recent_vs_history = user_data['amount_7d'] / user_data['amount_90d'] if user_data['amount_90d'] > 0 else 0
+
+    # 群体对比
+    vs_mean_ratio = user_data['spending'] / np.mean(population_data['spending'])
+
+    return {
+        'debt_to_income': dti,
+        'conversion_rate': conversion_rate,
+        'recent_vs_history': recent_vs_history,
+        'vs_mean_ratio': vs_mean_ratio
+    }
+```
+
+---
+
+### 类型2：Difference（差值特征）
+
+**核心思想：** 两个特征的绝对差异
+
+**业务逻辑：**
+```
+差值体现绝对变化：
+- 收入-支出 → 盈余/赤字
+- 本期-上期 → 增量/减量
+- 实际-预期 → 偏差
+- 个体-平均 → 偏离
+```
+
+---
+
+#### 2.1 时间差值特征
+
+**特征设计：**
+
+```python
+time_difference = {
+    # 环比差值
+    'mom_difference': '环比差值 = 本月-上月',
+    'wow_difference': '周环比差值 = 本周-上周',
+    'dod_difference': '日环比差值 = 今天-昨天',
+
+    # 同比差值
+    'yoy_difference': '同比差值 = 今年-去年同期',
+
+    # 累计差值
+    'cumulative_change': '累计变化 = 当前-起始',
+    'peak_to_current': '峰值到当前 = 当前-历史峰值',
+
+    # 缺口
+    'gap_to_target': '目标缺口 = 目标-当前',
+    'gap_to_quota': '配额缺口 = 配额-已用'
+}
+```
+
+---
+
+#### 2.2 群体差值特征
+
+**特征设计：**
+
+```python
+peer_difference = {
+    # vs均值
+    'diff_from_mean': '偏离均值 = 个体-群体均值',
+    'diff_from_median': '偏离中位数 = 个体-群体中位数',
+
+    # vs同类
+    'diff_from_peer_age': '与同龄人差异',
+    'diff_from_peer_income': '与同收入人群差异',
+
+    # vs标准
+    'diff_from_standard': '偏离标准 = 实际-标准值',
+    'excess_over_limit': '超限额度 = 实际-限额'
+}
+```
+
+---
+
+#### 2.3 预期差值特征
+
+**特征设计：**
+
+```python
+expectation_difference = {
+    # 实际vs预期
+    'actual_vs_expected': '实际-预期',
+    'surprise': '意外程度 = |实际-预期|/预期',
+
+    # 申报vs实际
+    'declared_vs_actual_income': '申报收入-实际收入',
+    'declared_vs_actual_debt': '申报负债-实际负债',
+
+    # 承诺vs执行
+    'promised_vs_delivered': '承诺-实际执行',
+    'planned_vs_actual': '计划-实际'
+}
+```
+
+---
+
+### 类型3：Product（乘积/交互特征）
+
+**核心思想：** 两个特征的乘积，捕捉交互效应
+
+**业务逻辑：**
+```
+乘积捕捉协同效应：
+- 频率 × 金额 → 总价值
+- 风险等级 × 金额 → 风险敞口
+- 年龄 × 收入 → 生命周期价值
+```
+
+---
+
+#### 3.1 规模特征（Scale）
+
+**特征设计：**
+
+```python
+scale_features = {
+    # 总量
+    'total_value': '总价值 = 频率 × 单价',
+    'total_revenue': '总收入 = 用户数 × 人均收入',
+    'total_exposure': '总风险敞口 = 金额 × 风险等级',
+
+    # 复合指标
+    'lifetime_value': '生命周期价值 = 留存时长 × 月均贡献',
+    'risk_weighted_amount': '风险加权金额 = 金额 × 风险权重'
+}
+```
+
+---
+
+#### 3.2 交互效应特征
+
+**特征设计：**
+
+```python
+interaction_features = {
+    # 双向交互
+    'age_income_interaction': '年龄 × 收入（生命阶段购买力）',
+    'frequency_recency_interaction': '频率 × (1/间隔)（活跃强度）',
+    'amount_risk_interaction': '金额 × 风险评分（风险暴露）',
+
+    # 条件交互
+    'high_risk_high_amount': '高风险 × 大额（双重风险）',
+    'young_high_debt': '年轻 × 高负债（年龄-负债交互）',
+    'low_income_high_spending': '低收入 × 高消费（不匹配）',
+
+    # 三向交互
+    'age_income_debt_interaction': '年龄 × 收入 × 负债'
+}
+```
+
+**计算示例：**
+```python
+def calculate_interaction_features(data):
+    """计算交互特征"""
+
+    # 规模特征
+    total_value = data['frequency'] * data['avg_amount']
+
+    # 双向交互
+    age_income_interaction = data['age'] * data['income']
+
+    # 条件交互（分段后交互）
+    is_high_risk = (data['risk_score'] > 0.7)
+    is_high_amount = (data['amount'] > data['amount'].quantile(0.75))
+    high_risk_high_amount = is_high_risk * is_high_amount  # 0/1交互
+
+    return {
+        'total_value': total_value,
+        'age_income_interaction': age_income_interaction,
+        'high_risk_high_amount': high_risk_high_amount
+    }
+```
+
+---
+
+### 类型4：Rank（排序特征）
+
+**核心思想：** 相对排名位置
+
+**业务逻辑：**
+```
+排名体现相对地位：
+- 销量排名 → 热度
+- 用户价值排名 → 重要性
+- 风险排名 → 优先级
+```
+
+---
+
+#### 4.1 排名特征
+
+**特征设计：**
+
+```python
+rank_features = {
+    # 绝对排名
+    'rank': '排名（1, 2, 3...）',
+    'rank_percentile': '排名百分比 = rank / total（0-1）',
+
+    # 分组排名
+    'rank_within_age_group': '年龄组内排名',
+    'rank_within_city': '城市内排名',
+    'rank_within_category': '品类内排名',
+
+    # Top/Bottom标志
+    'is_top10': '是否Top 10',
+    'is_top100': '是否Top 100',
+    'is_bottom10': '是否Bottom 10',
+
+    # 排名变化
+    'rank_change': '排名变化 = 本期排名 - 上期排名',
+    'rank_improvement': '排名提升标志',
+    'rank_decline': '排名下降标志'
+}
+```
+
+---
+
+#### 4.2 排名衍生特征
+
+**特征设计：**
+
+```python
+rank_derived = {
+    # 归一化排名
+    'normalized_rank': '归一化排名 = (max_rank - rank) / (max_rank - min_rank)',
+
+    # 排名分段
+    'rank_segment': '排名分段（头部/腰部/尾部）',
+    'rank_quintile': '排名五分位',
+
+    # 排名距离
+    'distance_to_top1': '距离第一名的差距',
+    'distance_to_average': '距离平均排名的差距',
+
+    # 相对排名
+    'rank_vs_expected': '实际排名 vs 预期排名',
+    'rank_outperformance': '排名超预期程度'
+}
+```
+
+**计算示例：**
+```python
+def calculate_rank_features(user_value, all_values):
+    """计算排名特征"""
+    # 排序（降序）
+    sorted_values = sorted(all_values, reverse=True)
+
+    # 排名
+    rank = sorted_values.index(user_value) + 1 if user_value in sorted_values else len(sorted_values)
+
+    # 归一化排名
+    normalized_rank = (len(sorted_values) - rank) / len(sorted_values)
+
+    # 排名百分比（分位数）
+    rank_percentile = 100 * (len(sorted_values) - rank + 1) / len(sorted_values)
+
+    return {
+        'rank': rank,
+        'normalized_rank': normalized_rank,
+        'rank_percentile': rank_percentile,
+        'is_top10': (rank <= 10),
+        'is_top100': (rank <= 100)
+    }
+```
+
+---
+
+## 🔄 交互比率综合应用
+
+### 应用1：组合爆炸策略
+
+**核心思想：** 从少量特征生成大量组合特征
+
+**生成策略：**
+
+```python
+def generate_ratio_combinations(features):
+    """自动生成比率组合"""
+    ratios = {}
+
+    # 遍历所有特征对
+    for i, feat1 in enumerate(features):
+        for feat2 in features[i+1:]:
+            # 比率
+            ratio_name = f"{feat1}_to_{feat2}_ratio"
+            ratios[ratio_name] = lambda x: x[feat1] / x[feat2] if x[feat2] != 0 else 0
+
+            # 差值
+            diff_name = f"{feat1}_{feat2}_difference"
+            ratios[diff_name] = lambda x: x[feat1] - x[feat2]
+
+            # 乘积
+            product_name = f"{feat1}_{feat2}_product"
+            ratios[product_name] = lambda x: x[feat1] * x[feat2]
+
+    return ratios
+```
+
+**注意事项：**
+```
+优点：
+✅ 特征数量暴增（n个特征 → n²个组合）
+✅ 可能发现强特征
+
+缺点：
+❌ 特征爆炸，维度灾难
+❌ 过拟合风险
+❌ 可解释性下降
+
+建议：
+→ 先基于业务逻辑筛选有意义的组合
+→ 使用特征选择方法过滤
+→ 监控模型复杂度
+```
+
+---
+
+### 应用2：分段交互
+
+**核心思想：** 先分段，再交互
+
+**示例：**
+
+```python
+def segmented_interaction(data):
+    """分段交互特征"""
+
+    # 分段
+    age_segment = pd.cut(data['age'], bins=[0, 25, 35, 50, 100],
+                         labels=['young', 'adult', 'middle', 'senior'])
+    income_segment = pd.qcut(data['income'], q=3,
+                              labels=['low', 'medium', 'high'])
+
+    # 交互
+    age_income_segment = age_segment.astype(str) + '_' + income_segment.astype(str)
+    # 如："young_high", "senior_low"
+
+    return age_income_segment
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用交互比率？
+
+**触发条件：**
+1. 用户特征数量少，需要特征增强
+2. 用户说"特征维度不够"
+3. 用户的业务有明确的比率关系（如：DTI）
+4. 模型效果遇到瓶颈，需要交叉特征
+
+**引导话术：**
+```
+CHRIS: 我看到你的原始特征不多，我建议用"交互比率"方法
+       从现有特征生成更多衍生特征。
+
+       🔢 交互比率包括4类：
+       1. Ratio（比率） - A/B相对关系（如：负债/收入）
+       2. Difference（差值） - A-B绝对差异（如：收入-支出）
+       3. Product（乘积） - A×B交互效应（如：频率×金额）
+       4. Rank（排序） - 相对排名位置
+
+       💡 基于你的特征，我建议创建：
+       [列出具体有业务意义的组合]
+
+       🤔 你想生成哪些组合？
+       还是我帮你自动生成然后筛选？
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用交互比率时：**
+
+- [ ] 是否优先考虑了有业务意义的组合？
+- [ ] 是否避免了特征爆炸？
+- [ ] 是否处理了除零问题？
+- [ ] 是否进行了特征选择？
+- [ ] 是否检查了多重共线性？
+
+**记住：**
+> "不是所有组合都有意义，优先考虑业务逻辑。
+> A/B、A-B、A×B虽然简单，但往往最有效。"
+
+---
+
+**CHRIS Feature Engineering System**
+L3 数据形态框架 - 交互比率
+版本 3.0 | 2025年1月

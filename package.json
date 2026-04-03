@@ -1,0 +1,60 @@
+{
+  "name": "chris-risk-workbench",
+  "version": "0.1.0",
+  "description": "信贷风控工作台 OpenCode 插件 — 多Agent协作的数据分析、特征衍生、策略制定",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "frameworks/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@opencode-ai/plugin": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "credit-risk",
+    "feature-engineering",
+    "data-analysis",
+    "strategy-design",
+    "wind-control",
+    "multi-agent",
+    "debate"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/chris-risk-workbench.git"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/chris-risk-workbench#readme",
+  "bugs": {
+    "url": "https://github.com/YOUR_USERNAME/chris-risk-workbench/issues"
+  },
+  "author": "YOUR_USERNAME",
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^6.0.2"
+  }
+}

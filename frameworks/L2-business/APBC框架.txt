@@ -1,0 +1,755 @@
+# L2 核心业务框架 - APBC框架（Application-Person-Behavior-Credit）
+
+## 📌 框架定位
+
+**本质：** 风控特征的全景分类框架，将数据源按维度分为4大类
+
+**适用场景：**
+- 信贷风控特征体系设计
+- 特征盘点与结构化梳理
+- 特征缺失诊断
+- 特征重要性分层
+- 任何需要"全面盘点数据资产"的场景
+
+**核心思想：**
+> "风控特征可以按数据源分为4类：
+> Application（申请表）- 用户填写的信息
+> Person（身份信息）- 用户是谁
+> Behavior（行为数据）- 用户做了什么
+> Credit（信用数据）- 用户的信用历史"
+
+---
+
+## 🎯 APBC四维度详解
+
+### A - Application（申请表数据）
+
+**核心问题：** 用户在申请时填写/提供了什么信息？
+
+**数据来源：**
+```
+申请表单：
+├─ 用户主动填写的信息
+├─ 用户上传的材料
+├─ 申请行为本身的特征
+└─ 申请环境特征
+```
+
+**重要性：**
+```
+✅ 优点：
+- 数据最新、时效性强
+- 覆盖面广（每个申请都有）
+- 获取成本低
+
+❌ 缺点：
+- 可能造假（自报数据）
+- 信息不完整
+- 需要交叉验证
+```
+
+---
+
+#### A1: 申请内容特征（Application Content）
+
+**特征分类：**
+
+##### A1.1 申请产品特征
+```python
+application_product = {
+    # 基础申请信息
+    'apply_product_type': '申请产品类型（信用卡/贷款/车贷/房贷）',
+    'apply_amount': '申请金额',
+    'apply_tenor': '申请期限（月数）',
+    'apply_purpose': '申请用途（消费/经营/医疗/教育）',
+    'apply_channel': '申请渠道（APP/Web/门店/中介）',
+
+    # 申请金额特征
+    'apply_amount_level': '申请金额等级（分段）',
+    'apply_amount_vs_income': '申请金额/月收入（倍数）',
+    'apply_amount_vs_asset': '申请金额/总资产',
+    'apply_amount_abnormal': '申请金额异常（过高/过低）',
+
+    # 申请期限特征
+    'apply_tenor_level': '申请期限等级（短期/中期/长期）',
+    'apply_tenor_vs_age': '申请期限 vs 年龄合理性',
+    'monthly_repayment': '月还款额 = 申请金额 / 期限',
+    'repayment_income_ratio': '月还款/月收入',
+
+    # 申请用途特征
+    'apply_purpose_risk_level': '申请用途风险等级',
+    'purpose_amount_match': '用途与金额匹配度',
+    # 如：医疗50万 vs 教育50万，合理性不同
+}
+```
+
+##### A1.2 收入资产申报
+```python
+application_income_asset = {
+    # 收入申报
+    'declared_income': '申报月收入',
+    'declared_annual_income': '申报年收入',
+    'income_source': '收入来源（工资/经营/投资）',
+    'income_proof_type': '收入证明方式（银行流水/工资单/无）',
+    'employer_name': '雇主名称',
+    'employer_type': '雇主类型（国企/外企/民企/个体）',
+    'occupation': '职业',
+    'industry': '行业',
+
+    # 资产申报
+    'declared_asset': '申报总资产',
+    'has_house': '是否有房',
+    'house_value': '房产价值',
+    'has_car': '是否有车',
+    'car_value': '车辆价值',
+    'has_stock': '是否有股票/基金',
+
+    # 合理性检验
+    'income_consistency_check': '收入一致性检验（自报 vs 实际）',
+    'asset_consistency_check': '资产一致性检验',
+    'income_asset_ratio': '收入/资产比（合理性）',
+    'occupation_income_match': '职业与收入匹配度'
+}
+```
+
+##### A1.3 负债申报
+```python
+application_debt = {
+    # 负债申报
+    'declared_total_debt': '申报总负债',
+    'declared_monthly_repayment': '申报月还款额',
+    'declared_loan_cnt': '申报贷款笔数',
+    'declared_credit_card_cnt': '申报信用卡张数',
+    'declared_credit_card_debt': '申报信用卡欠款',
+
+    # DTI计算
+    'declared_dti': '申报DTI = 月还款 / 月收入',
+    'new_dti': '新DTI = (现有月还款 + 本次月供) / 月收入',
+
+    # 合理性检验
+    'debt_consistency_check': '负债一致性检验（申报 vs 征信）',
+    'debt_underreporting': '负债少报程度',
+    'debt_income_mismatch': '负债与收入不匹配'
+}
+```
+
+---
+
+#### A2: 申请行为特征（Application Behavior）
+
+**特征分类：**
+
+##### A2.1 申请时间特征
+```python
+application_time = {
+    # 申请时间点
+    'apply_hour': '申请小时',
+    'apply_day_of_week': '申请星期几',
+    'apply_day_of_month': '申请日期（月初/月中/月末）',
+    'is_working_hour': '是否工作时间申请',
+    'is_midnight': '是否凌晨申请（0-6点）',
+    'is_weekend': '是否周末申请',
+    'is_holiday': '是否节假日申请',
+
+    # 异常时间
+    'abnormal_time_flag': '异常时间申请标志',
+    'urgent_time_pattern': '急迫时间模式（凌晨+节假日）',
+
+    # 时间周期
+    'apply_near_payday': '是否在发薪日附近申请',
+    'apply_near_repayment_date': '是否在还款日附近申请',
+    'apply_near_month_end': '是否在月末申请'
+}
+```
+
+##### A2.2 申请频率特征
+```python
+application_frequency = {
+    # 历史申请频率
+    'total_apply_cnt': '历史总申请次数',
+    'apply_cnt_7d': '近7天申请次数',
+    'apply_cnt_30d': '近30天申请次数',
+    'apply_cnt_90d': '近90天申请次数',
+    'apply_cnt_180d': '近180天申请次数',
+
+    # 多头申请
+    'multi_org_apply_cnt': '多头申请机构数',
+    'concurrent_apply_cnt': '同时段申请数（近7天>1家）',
+
+    # 申请频率异常
+    'high_frequency_apply': '高频申请标志（7天>3次）',
+    'apply_frequency_spike': '申请频率激增（近期 vs 历史）',
+
+    # 申请间隔
+    'days_since_last_apply': '距离上次申请天数',
+    'avg_apply_interval': '平均申请间隔',
+    'min_apply_interval': '最小申请间隔（<1天 = 异常）'
+}
+```
+
+##### A2.3 申请操作特征
+```python
+application_operation = {
+    # 填写行为
+    'fill_time': '填表耗时',
+    'fill_time_vs_avg': '填表耗时 vs 平均水平',
+    'too_fast_flag': '填写过快标志（<3分钟）',
+    'too_slow_flag': '填写过慢标志（>30分钟）',
+
+    # 修改行为
+    'modify_cnt': '信息修改次数',
+    'key_field_modify': '关键字段修改（收入/负债）',
+    'backtrack_cnt': '回溯修改次数',
+
+    # 完整性
+    'completion_rate': '信息完整度（必填+选填）',
+    'optional_field_fill_rate': '选填项填写率',
+    'material_upload_cnt': '材料上传数量',
+
+    # 操作模式
+    'paste_cnt': '粘贴次数（复制粘贴 vs 手动输入）',
+    'paste_ratio': '粘贴占比',
+    'operation_rhythm_std': '操作节奏标准差（规律 = 机器）'
+}
+```
+
+---
+
+#### A3: 申请环境特征（Application Environment）
+
+**特征分类：**
+
+```python
+application_environment = {
+    # 设备特征
+    'device_type': '设备类型（iOS/Android/PC）',
+    'device_brand': '设备品牌',
+    'device_model': '设备型号',
+    'device_price_level': '设备价格等级',
+    'device_age': '设备使用年限',
+    'device_id': '设备ID',
+
+    # 网络特征
+    'ip_address': 'IP地址',
+    'ip_location': 'IP归属地',
+    'ip_type': 'IP类型（家庭/公司/公共WiFi）',
+    'use_vpn': '是否使用VPN',
+    'use_proxy': '是否使用代理',
+
+    # 位置特征
+    'gps_location': 'GPS位置',
+    'apply_location_city': '申请地城市',
+    'location_consistency': '位置一致性（GPS vs IP vs 填写地址）',
+
+    # 环境一致性
+    'device_change_flag': '设备变更标志（与历史不同）',
+    'location_change_flag': '位置变更标志',
+    'ip_change_flag': 'IP变更标志',
+    'environment_abnormal_score': '环境异常评分'
+}
+```
+
+---
+
+### P - Person（身份信息数据）
+
+**核心问题：** 用户是谁？真实身份如何？
+
+**数据来源：**
+```
+实名认证：
+├─ 身份证信息
+├─ 手机号实名
+├─ 银行卡实名
+├─ 人脸识别
+└─ 第三方征信
+```
+
+---
+
+#### P1: 人口统计学特征（Demographics）
+
+```python
+person_demographics = {
+    # 基础属性
+    'age': '年龄',
+    'gender': '性别',
+    'marital_status': '婚姻状况',
+    'education': '学历',
+    'household_register': '户籍地',
+    'residence_city': '居住城市',
+
+    # 年龄分段
+    'age_group': '年龄分段（18-25/26-35/36-45/46-60/60+）',
+    'age_risk_level': '年龄风险等级',
+    'is_young_high_risk': '是否年轻高风险群体（18-22岁）',
+    'is_senior': '是否老年人（>60岁）',
+
+    # 学历
+    'education_level': '学历等级',
+    'education_income_match': '学历与收入匹配度',
+
+    # 婚姻家庭
+    'is_married': '是否已婚',
+    'has_children': '是否有子女',
+    'family_size': '家庭人口数'
+}
+```
+
+---
+
+#### P2: 身份稳定性特征（Identity Stability）
+
+```python
+person_stability = {
+    # 手机号稳定性
+    'phone_tenure_months': '手机号实名时长（月）',
+    'phone_registration_days': '手机号注册天数',
+    'phone_recent_change': '手机号近期变更标志',
+    'phone_stability_score': '手机号稳定性评分',
+
+    # 居住稳定性
+    'residence_duration_months': '当前居住时长（月）',
+    'address_change_cnt': '地址变更次数',
+    'own_house_flag': '是否自有住房',
+    'residence_stability_score': '居住稳定性评分',
+
+    # 工作稳定性
+    'job_tenure_months': '当前工作年限（月）',
+    'job_change_cnt': '跳槽次数',
+    'employer_type': '雇主类型',
+    'job_stability_score': '工作稳定性评分',
+
+    # 身份一致性
+    'id_phone_match': '身份证与手机号归属地一致',
+    'id_address_match': '身份证与居住地一致',
+    'identity_consistency_score': '身份一致性评分'
+}
+```
+
+---
+
+#### P3: 社会网络特征（Social Network）
+
+```python
+person_social = {
+    # 联系人
+    'contact_cnt': '联系人数量',
+    'emergency_contact_cnt': '紧急联系人数量',
+    'emergency_contact_relationship': '紧急联系人关系',
+
+    # 社交网络
+    'social_network_size': '社交网络规模（好友数）',
+    'social_activity_level': '社交活跃度',
+
+    # 关系质量
+    'contact_quality_score': '联系人质量评分',
+    'blacklist_contact_ratio': '联系人中黑名单占比',
+    'high_risk_contact_cnt': '高风险联系人数量',
+
+    # 设备/IP关联
+    'device_share_cnt': '设备共享人数',
+    'ip_share_cnt': 'IP共享人数',
+    'address_share_cnt': '地址共享人数',
+
+    # 关系风险
+    'fraud_network_score': '欺诈网络关联评分',
+    'risk_contagion_score': '风险传染评分'
+}
+```
+
+---
+
+### B - Behavior（行为数据）
+
+**核心问题：** 用户在平台上做了什么？行为模式如何？
+
+**数据来源：**
+```
+平台行为：
+├─ 登录行为
+├─ 浏览行为
+├─ 交易行为
+├─ 互动行为
+└─ 使用行为
+```
+
+---
+
+#### B1: 使用行为特征（Usage Behavior）
+
+```python
+behavior_usage = {
+    # 活跃度
+    'total_login_days': '总登录天数',
+    'login_days_7d': '近7天登录天数',
+    'login_days_30d': '近30天登录天数',
+    'active_days_ratio': '活跃天数占比',
+    'avg_session_duration': '平均单次使用时长',
+
+    # 使用频率
+    'total_sessions': '总会话次数',
+    'sessions_per_day': '日均会话次数',
+    'days_since_last_login': '距离上次登录天数',
+
+    # 使用深度
+    'feature_usage_cnt': '功能使用数量',
+    'feature_usage_diversity': '功能使用多样性',
+    'advanced_feature_usage': '高级功能使用标志',
+
+    # 使用趋势
+    'usage_trend': '使用频率趋势（增长/下降）',
+    'usage_declining_flag': '使用频率下降标志'
+}
+```
+
+---
+
+#### B2: 交易行为特征（Transaction Behavior）
+
+```python
+behavior_transaction = {
+    # 交易量
+    'total_txn_cnt': '总交易次数',
+    'txn_cnt_30d': '近30天交易次数',
+    'total_txn_amount': '总交易金额',
+    'txn_amount_30d': '近30天交易金额',
+    'avg_txn_amount': '平均交易金额',
+
+    # 交易类型
+    'txn_type_diversity': '交易类型多样性',
+    'merchant_diversity': '商户多样性',
+    'high_risk_txn_cnt': '高风险交易次数',
+
+    # 交易时间
+    'midnight_txn_ratio': '凌晨交易占比',
+    'weekend_txn_ratio': '周末交易占比',
+    'abnormal_time_txn_cnt': '异常时间交易次数',
+
+    # 交易地点
+    'txn_city_cnt': '交易城市数',
+    'cross_city_txn_cnt': '跨城市交易次数',
+    'cross_border_txn_cnt': '跨境交易次数',
+
+    # 交易异常
+    'failed_txn_ratio': '失败交易占比',
+    'cancelled_txn_ratio': '取消交易占比',
+    'refund_txn_ratio': '退款交易占比'
+}
+```
+
+---
+
+#### B3: 内容行为特征（Content Behavior）
+
+```python
+behavior_content = {
+    # 浏览行为
+    'page_view_cnt': '浏览页面次数',
+    'product_view_cnt': '商品浏览次数',
+    'content_read_cnt': '内容阅读次数',
+    'avg_dwell_time': '平均停留时长',
+
+    # 互动行为
+    'like_cnt': '点赞次数',
+    'comment_cnt': '评论次数',
+    'share_cnt': '分享次数',
+    'review_cnt': '评价次数',
+
+    # 内容生产
+    'post_cnt': '发帖次数',
+    'ugc_cnt': '用户生成内容数量',
+    'content_quality_score': '内容质量评分',
+
+    # 转化行为
+    'add_to_cart_cnt': '加购次数',
+    'add_to_wishlist_cnt': '收藏次数',
+    'conversion_rate': '转化率 = 购买 / 浏览'
+}
+```
+
+---
+
+### C - Credit（信用数据）
+
+**核心问题：** 用户的信用历史如何？
+
+**数据来源：**
+```
+征信报告：
+├─ 央行征信
+├─ 百行征信
+├─ 第三方征信
+├─ 行业黑名单
+└─ 平台内部信用
+```
+
+---
+
+#### C1: 信用历史特征（Credit History）
+
+```python
+credit_history = {
+    # 信用账户
+    'credit_account_cnt': '信用账户总数',
+    'credit_card_cnt': '信用卡张数',
+    'loan_account_cnt': '贷款账户数',
+    'active_account_cnt': '活跃账户数',
+    'closed_account_cnt': '已关闭账户数',
+
+    # 信用额度
+    'total_credit_limit': '总授信额度',
+    'used_credit_limit': '已用额度',
+    'credit_utilization': '信用卡使用率',
+    'available_credit': '可用额度',
+
+    # 还款历史
+    'total_loan_cnt': '历史贷款笔数',
+    'repaid_loan_cnt': '已结清贷款笔数',
+    'loan_repayment_ratio': '贷款结清率',
+    'early_repayment_cnt': '提前还款次数',
+
+    # 逾期记录
+    'overdue_cnt_total': '历史总逾期次数',
+    'overdue_cnt_m1': 'M1逾期次数',
+    'overdue_cnt_m2': 'M2逾期次数',
+    'overdue_cnt_m3plus': 'M3+逾期次数',
+    'max_overdue_days': '最长逾期天数',
+    'days_since_last_overdue': '距离最近一次逾期天数',
+    'current_overdue_flag': '当前是否逾期',
+
+    # 逾期严重度
+    'overdue_rate': '逾期率 = 逾期次数 / 总还款次数',
+    'serious_overdue_rate': '严重逾期率 = M3+ / 总逾期',
+    'overdue_worsening_trend': '逾期恶化趋势'
+}
+```
+
+---
+
+#### C2: 征信查询特征（Credit Inquiry）
+
+```python
+credit_inquiry = {
+    # 查询次数
+    'inquiry_cnt_6m': '近6个月征信查询次数',
+    'inquiry_cnt_3m': '近3个月征信查询次数',
+    'inquiry_cnt_1m': '近1个月征信查询次数',
+
+    # 查询类型
+    'loan_inquiry_cnt': '贷款审批查询次数',
+    'credit_card_inquiry_cnt': '信用卡审批查询次数',
+    'self_inquiry_cnt': '本人查询次数',
+
+    # 查询机构
+    'inquiry_org_cnt': '查询机构数量',
+    'bank_inquiry_cnt': '银行查询次数',
+    'nbfi_inquiry_cnt': '非银机构查询次数',
+
+    # 查询异常
+    'high_frequency_inquiry': '高频查询标志（1月>5次）',
+    'inquiry_spike': '查询激增标志',
+    'inquiry_no_loan': '只查询不放款（被拒多）'
+}
+```
+
+---
+
+#### C3: 负面信息特征（Negative Information）
+
+```python
+credit_negative = {
+    # 黑名单
+    'in_blacklist': '是否在黑名单',
+    'blacklist_type': '黑名单类型（欺诈/失信/老赖）',
+    'days_since_blacklist': '距离拉黑天数',
+
+    # 法律记录
+    'lawsuit_cnt': '涉诉次数',
+    'judgment_cnt': '法院判决次数',
+    'executed_cnt': '被执行次数',
+    'dishonest_person_flag': '是否失信被执行人',
+
+    # 其他负面
+    'tax_arrears': '是否有欠税记录',
+    'administrative_penalty': '是否有行政处罚',
+    'criminal_record': '是否有犯罪记录',
+
+    # 负面评分
+    'negative_info_score': '负面信息评分',
+    'credit_risk_level': '信用风险等级'
+}
+```
+
+---
+
+## 🔄 APBC综合应用模式
+
+### 模式1：APBC特征盘点
+
+**核心思想：** 用APBC框架盘点现有特征，诊断缺失
+
+**实施步骤：**
+```
+Step 1: 列出所有现有特征
+Step 2: 按APBC分类归类
+Step 3: 识别哪个维度特征少
+Step 4: 针对性补充特征
+
+示例：
+现有特征50个：
+├─ A类（申请） - 15个 ✅
+├─ P类（身份） - 8个 ⚠️  偏少
+├─ B类（行为） - 5个 ❌  严重不足
+└─ C类（信用） - 22个 ✅
+
+诊断：
+→ B类特征严重不足，需补充平台行为数据
+→ P类特征偏少，需补充身份稳定性/社会网络特征
+```
+
+---
+
+### 模式2：APBC数据源优先级
+
+**核心思想：** 不同场景下，APBC的重要性不同
+
+**优先级矩阵：**
+
+| 场景 | A (申请) | P (身份) | B (行为) | C (信用) |
+|------|---------|---------|---------|---------|
+| **新客首贷** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐ | ⭐⭐ |
+| **老客复贷** | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
+| **欺诈检测** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
+| **信用评分** | ⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
+| **流失预警** | ⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ |
+
+**解释：**
+```
+新客首贷：
+- A类最重要（只有申请表数据）
+- P类很重要（身份验证）
+- B类不重要（没有行为数据）
+- C类中等（看征信）
+
+老客复贷：
+- B类最重要（有平台行为数据）
+- C类很重要（有还款历史）
+- A类中等（申请信息参考性下降）
+- P类不重要（身份已验证）
+```
+
+---
+
+### 模式3：APBC交叉验证
+
+**核心思想：** A/P/B/C之间应该相互印证，矛盾则有问题
+
+**交叉验证规则：**
+
+#### A × C 交叉（申请 × 信用）
+```python
+ac_cross_validation = {
+    # 申报vs征信
+    'income_mismatch': '申报收入 vs 征信收入不一致',
+    'debt_mismatch': '申报负债 vs 征信负债不一致',
+    'employer_mismatch': '申报雇主 vs 征信雇主不一致',
+
+    # 申请行为vs信用历史
+    'apply_amount_vs_credit_history': '申请大额但信用历史空白',
+    'high_apply_freq_with_good_credit': '频繁申请但信用良好（异常）',
+
+    # 检测逻辑
+    'ac_consistency_score': 'A类和C类一致性评分'
+}
+```
+
+#### A × P 交叉（申请 × 身份）
+```python
+ap_cross_validation = {
+    # 申请信息vs身份信息
+    'apply_location_vs_residence': '申请地 vs 居住地不一致',
+    'apply_time_vs_age': '申请时间与年龄不匹配（如：老人凌晨申请）',
+    'apply_amount_vs_age': '申请金额与年龄不匹配（如：年轻人大额）',
+
+    # 申请设备vs身份
+    'device_value_vs_income': '设备价值与收入不匹配',
+    'device_age_vs_person_age': '设备使用时长与年龄不匹配',
+
+    # 检测逻辑
+    'ap_consistency_score': 'A类和P类一致性评分'
+}
+```
+
+#### B × C 交叉（行为 × 信用）
+```python
+bc_cross_validation = {
+    # 行为vs信用
+    'active_but_poor_credit': '平台活跃但信用差（矛盾）',
+    'inactive_but_good_credit': '平台不活跃但信用好（正常）',
+
+    # 交易行为vs信用历史
+    'high_txn_but_overdue': '交易频繁但有逾期（还款意愿差）',
+    'low_txn_but_good_repay': '交易少但还款好（谨慎用户）',
+
+    # 检测逻辑
+    'bc_consistency_score': 'B类和C类一致性评分'
+}
+```
+
+---
+
+## 🚀 在CHRIS系统中的应用
+
+### 何时引导用户使用APBC框架？
+
+**触发条件：**
+1. 用户说"不知道有哪些数据可用/不知道从哪里开始"
+2. 用户需要"盘点数据资产/特征梳理"
+3. 用户的数据来源多样（申请表+征信+行为）
+4. 用户想"全面设计特征体系"
+
+**引导话术：**
+```
+CHRIS: 我建议用"APBC框架"来系统梳理你的数据资源。
+
+       📊 APBC将数据源分为4类：
+       - A (Application): 申请表数据 - 用户填写的信息
+       - P (Person): 身份信息 - 用户是谁
+       - B (Behavior): 行为数据 - 用户做了什么
+       - C (Credit): 信用数据 - 用户的信用历史
+
+       🔍 让我帮你盘点一下：
+       [分析用户提供的数据字段，归类到APBC]
+
+       💡 诊断结果：
+       - A类：xxx字段 ✅ 充足
+       - P类：xxx字段 ⚠️ 偏少，建议补充身份稳定性特征
+       - B类：xxx字段 ❌ 严重不足，是否有平台行为数据？
+       - C类：xxx字段 ✅ 充足
+
+       🤔 你想优先补充哪个维度的数据？
+```
+
+---
+
+## ✅ 实战检查清单
+
+**在使用APBC框架时：**
+
+- [ ] 是否覆盖了全部4个维度？
+- [ ] 是否识别了数据缺失的维度？
+- [ ] 是否根据场景调整了APBC优先级？
+- [ ] 是否进行了APBC交叉验证？
+- [ ] 是否定期更新APBC特征盘点？
+
+**记住：**
+> "APBC不是特征生成方法，而是特征分类框架。
+> 它帮你全面盘点数据资产，识别特征缺失，
+> 确保特征体系的完整性和结构化。"
+
+---
+
+**CHRIS Feature Engineering System**
+L2 核心业务框架 - APBC框架
+版本 3.0 | 2025年1月
