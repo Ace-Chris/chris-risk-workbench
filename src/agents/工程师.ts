@@ -61,6 +61,7 @@ export const createEngineerAgent: AgentFactory = (model) => ({
   },
   description: "工程师 - 特征工程代码生成",
   color: "#2196F3",
+  skills: ["feature-engineering"],
 })
 
 createEngineerAgent.mode = "subagent"

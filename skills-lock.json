@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "skills": {
+    "Feature Engineering": {
+      "source": "aj-geddes/useful-ai-prompts",
+      "sourceType": "github",
+      "computedHash": "0dd00b635a9daee1ba0e4ab4cbf009b3e84864001c8ae11fa453b9204482b55d"
+    },
+    "agent-evaluation": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "13552fe394f0459762bf1cd292699dfa1fedcb4aeb7ec68fda40f71d1d48101e"
+    },
+    "ai-image-generation": {
+      "source": "inferen-sh/skills",
+      "sourceType": "github",
+      "computedHash": "9ee6d37669b89f87bb0b1e1f89bf06cca35d69d461786a3fb847b07c4f2c8375"
+    },
+    "browser-use": {
+      "source": "browser-use/browser-use",
+      "sourceType": "github",
+      "computedHash": "24c08ebcec599f98eca1fbaa0fb67483ac7926347e69de16f1c5e423b49e6145"
+    },
+    "creative-problem-solver": {
+      "source": "tkersey/dotfiles",
+      "sourceType": "github",
+      "computedHash": "2b4f6c97d3769c6d49f20caf2ab2b4823c80e2681e2c067956310b58821ced46"
+    },
+    "critical-thinking-logical-reasoning": {
+      "source": "sammcj/agentic-coding",
+      "sourceType": "github",
+      "computedHash": "f4bea6fc01f51a2605194e39a2d23b8e35e95a0cb3557c465a94518ad97fc244"
+    },
+    "data-analysis": {
+      "source": "bytedance/deer-flow",
+      "sourceType": "github",
+      "computedHash": "36ba944ee6b0a5cc313fbf05181d29dd375ecafd32c4d42e9da0de6b5e5b9dcb"
+    },
+    "exploratory-data-analysis": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "computedHash": "ecbe35035e3598bbb055e69b90fba121de28a6f5e4309757c5c5e4a1e01fe423"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "computedHash": "9e1c8b3103f92fa8092568a44fe64858de7c5c9dc65ce4bea8f168080e889cfd"
+    },
+    "methodology-curator": {
+      "source": "athola/claude-night-market",
+      "sourceType": "github",
+      "computedHash": "4e656160c1052d4cc6e5cef600349499d7343e61afb45b1a4a19d5b2efaf505c"
+    },
+    "parallel-deep-research": {
+      "source": "parallel-web/parallel-agent-skills",
+      "sourceType": "github",
+      "computedHash": "4177348db0e4245c787753f5ec3c2b471b48c24a8f63b870bd02a80ba15ec77e"
+    },
+    "self-improving-agent": {
+      "source": "charon-fan/agent-playbook",
+      "sourceType": "github",
+      "computedHash": "f52b5577f09152ab9c2577f6fd6bd4d23ba87acc884dfc3e90a551949f0d90f1"
+    },
+    "xlsx": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "cb7fba2177d0d35d14b3244272b25d1b05246e99b3468a087fe06c84193dbd20"
+    }
+  }
+}

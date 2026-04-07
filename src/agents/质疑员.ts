@@ -42,5 +42,6 @@ export const createChallengerAgent: AgentFactory = (model: string) => ({
   tools: { task: false, read: true, write: false, grep: true, skill_mcp: true },
   description: "质疑员 - 辩论与逻辑质疑",
   color: "#E74C3C",
+  skills: ["critical-thinking-logical-reasoning"],
 })
 createChallengerAgent.mode = "subagent" as const

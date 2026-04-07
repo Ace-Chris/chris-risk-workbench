@@ -49,6 +49,7 @@ export const createAnalystAgent: AgentFactory = (model) => ({
   },
   description: "分析师 - 数据分析与统计",
   color: "#4ECDC4",
+  skills: ["xlsx", "data-analysis"],
 })
 
 createAnalystAgent.mode = "subagent"

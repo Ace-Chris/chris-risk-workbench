@@ -30,5 +30,6 @@ export const createLookerAgent: AgentFactory = (model: string) => ({
   tools: { task: false, read: true, write: false, grep: false, look_at: true, skill_mcp: true },
   description: "视觉员 - 多模态数据分析",
   color: "#3498DB",
+  skills: ["ai-image-generation"],
 })
 createLookerAgent.mode = "subagent" as const

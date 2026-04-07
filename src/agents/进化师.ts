@@ -28,5 +28,6 @@ export const createEvolverAgent: AgentFactory = (model: string) => ({
   tools: { task: false, read: true, write: true, grep: true, skill_mcp: true },
   description: "进化师 - 自我评估与系统改进",
   color: "#8E44AD",
+  skills: ["self-improving-agent", "agent-evaluation"],
 })
 createEvolverAgent.mode = "subagent" as const

@@ -26,5 +26,6 @@ export const createFrameworkAgent: AgentFactory = (model: string) => ({
   tools: { task: false, read: true, write: false, grep: true, skill_mcp: true },
   description: "框架师 - 分析方法论匹配与推荐",
   color: "#1ABC9C",
+  skills: ["methodology-curator"],
 })
 createFrameworkAgent.mode = "subagent" as const

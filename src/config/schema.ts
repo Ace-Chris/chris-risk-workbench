@@ -1,12 +1,18 @@
+/**
+ * Configuration schema for chris-risk-workbench.
+ * Defines types, defaults, and config loading logic.
+ */
+
 import { z } from "zod"
 import { existsSync, readFileSync } from "fs"
-import { join, resolve } from "path"
+import { join } from "path"
 import { parseJSONC, deepMerge } from "../shared/utils.js"
 import { log } from "../shared/logger.js"
 import { AGENT_MODEL_MAP } from "../shared/model-requirements.js"
 import type { ModelConfig } from "../shared/model-requirements.js"
 
 // === Work Mode ===
+
 export type WorkMode = "data-analysis" | "feature-engineering" | "strategy-design" | "all"
 
 export const WORK_MODE_LABELS: Record<WorkMode, string> = {
@@ -15,6 +21,7 @@ export const WORK_MODE_LABELS: Record<WorkMode, string> = {
   "strategy-design": "策略制定模式",
   all: "综合模式",
 }
+
 export const WORK_MODE_DESCRIPTIONS: Record<WorkMode, string> = {
   "data-analysis": "全面探索数据，输出数据质量报告和分析报告",
   "feature-engineering": "分析变量预测能力，设计衍生特征，生成工程代码",
@@ -23,6 +30,7 @@ export const WORK_MODE_DESCRIPTIONS: Record<WorkMode, string> = {
 }
 
 // === Agent Override Schema ===
+
 export const AgentOverrideSchema = z.object({
   model: z.string().optional(),
   fallback_models: z.array(z.string()).optional(),
@@ -33,17 +41,21 @@ export const AgentOverrideSchema = z.object({
   description: z.string().optional(),
   prompt_append: z.string().optional(),
 })
+
 export type AgentOverride = z.infer<typeof AgentOverrideSchema>
 
 // === Debate Config Schema ===
+
 export const DebateConfigSchema = z.object({
   auto_trigger: z.boolean().optional().default(true),
   max_rounds: z.number().optional().default(3),
   participants: z.array(z.string()).optional(),
 })
+
 export type DebateConfig = z.infer<typeof DebateConfigSchema>
 
 // === Root Config Schema ===
+
 export const ChrisRiskWorkbenchConfigSchema = z.object({
   mode: z.enum(["data-analysis", "feature-engineering", "strategy-design", "all"]).optional(),
   agents: z.record(z.string(), AgentOverrideSchema).optional(),
@@ -51,10 +63,13 @@ export const ChrisRiskWorkbenchConfigSchema = z.object({
   disabled_agents: z.array(z.string()).optional(),
   frameworks_path: z.string().optional(),
   debate: DebateConfigSchema.optional(),
+  skills_path: z.string().optional(),
 })
+
 export type ChrisRiskWorkbenchConfig = z.infer<typeof ChrisRiskWorkbenchConfigSchema>
 
 // === Defaults ===
+
 export const DEFAULT_CONFIG: ChrisRiskWorkbenchConfig = {
   mode: "all",
   debate: {
@@ -65,74 +80,54 @@ export const DEFAULT_CONFIG: ChrisRiskWorkbenchConfig = {
 }
 
 // === Config Loading ===
+
+const CONFIG_FILENAME = "chris-risk-workbench.jsonc"
+
 export function loadPluginConfig(directory: string): ChrisRiskWorkbenchConfig {
-  // 1. Load user config: ~/.config/opencode/chris-risk-workbench.jsonc
-  const userConfigDir = resolve(directory, "..", "..")
-  const userConfigPath = join(userConfigDir, ".config", "opencode", "chris-risk-workbench.jsonc")
-  let userConfig: Partial<ChrisRiskWorkbenchConfig> = {}
-  if (existsSync(userConfigPath)) {
-    try {
-      const raw = readFileSync(userConfigPath, "utf-8")
-      userConfig = parseJSONC(raw) as Partial<ChrisRiskWorkbenchConfig>
-      log.info("Loaded user config from " + userConfigPath)
-    } catch (err) {
-      log.warn("Failed to parse user config: " + userConfigPath, err)
-    }
+  const configPath = join(directory, CONFIG_FILENAME)
+
+  if (!existsSync(configPath)) {
+    log.info("No config file found, using defaults")
+    return { ...DEFAULT_CONFIG }
   }
 
-  // 2. Load project config: .opencode/chris-risk-workbench.jsonc
-  const projectConfigPath = join(directory, ".opencode", "chris-risk-workbench.jsonc")
-  let projectConfig: Partial<ChrisRiskWorkbenchConfig> = {}
-  if (existsSync(projectConfigPath)) {
-    try {
-      const raw = readFileSync(projectConfigPath, "utf-8")
-      projectConfig = parseJSONC(raw) as Partial<ChrisRiskWorkbenchConfig>
-      log.info("Loaded project config from " + projectConfigPath)
-    } catch (err) {
-      log.warn("Failed to parse project config: " + projectConfigPath, err)
-    }
+  try {
+    const raw = readFileSync(configPath, "utf-8")
+    const parsed = parseJSONC(raw) as Partial<ChrisRiskWorkbenchConfig>
+    const config = deepMerge(DEFAULT_CONFIG, parsed)
+    const validated = ChrisRiskWorkbenchConfigSchema.parse(config)
+    log.info("Config loaded from " + configPath)
+    return validated
+  } catch (err) {
+    log.warn("Failed to load config, using defaults: " + err)
+    return { ...DEFAULT_CONFIG }
   }
-
-  // 3. Merge: project overrides user overrides defaults
-  const merged = deepMerge(DEFAULT_CONFIG, userConfig)
-  const finalConfig = deepMerge(merged, projectConfig)
-
-  // 4. Validate with Zod
-  const result = ChrisRiskWorkbenchConfigSchema.safeParse(finalConfig)
-  if (!result.success) {
-    log.error("Config validation errors:", result.error)
-    return DEFAULT_CONFIG
-  }
-
-  log.info("Final config loaded successfully")
-  return result.data
 }
 
 // === Helper Functions ===
+
 export function getAgentModelConfig(
   agentName: string,
   config: ChrisRiskWorkbenchConfig,
 ): ModelConfig {
-  const defaultModel = AGENT_MODEL_MAP[agentName]
-  if (!defaultModel) {
+  const base = AGENT_MODEL_MAP[agentName]
+  const override = config.agents?.[agentName]
+
+  if (!base) {
     return {
-      model: "zai-coding-plan/glm-5.1",
-      fallback: "zai-coding-plan/glm-5.1",
+      model: override?.model ?? "zai-coding-plan/glm-5.1",
+      fallback: override?.fallback_models?.[0] ?? "zai-coding-plan/glm-5.1",
+      temperature: override?.temperature,
       mode: "subagent",
     }
   }
 
-  const override = config.agents?.[agentName]
-  if (override?.model) {
-    return {
-      ...defaultModel,
-      model: override.model,
-      fallback: override.fallback_models?.[0] ?? defaultModel.fallback,
-      temperature: override.temperature ?? defaultModel.temperature,
-    }
+  return {
+    model: override?.model ?? base.model,
+    fallback: override?.fallback_models?.[0] ?? base.fallback,
+    temperature: override?.temperature ?? base.temperature,
+    mode: base.mode,
   }
-
-  return defaultModel
 }
 
 export function getWorkMode(config: ChrisRiskWorkbenchConfig): WorkMode {

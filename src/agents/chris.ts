@@ -53,6 +53,7 @@ export const createChrisAgent: AgentFactory = (model: string) => ({
   },
   description: "主编 - 任务调度与综合",
   color: "#FF6B35",
+  skills: ["find-skills"],
 })
 
 createChrisAgent.mode = "primary"

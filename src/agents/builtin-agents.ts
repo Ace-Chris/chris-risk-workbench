@@ -11,6 +11,8 @@ import { createLookerAgent } from "./视觉员.js"
 import type { AgentOverride, ChrisRiskWorkbenchConfig } from "../config/schema.js"
 import { getAgentModelConfig } from "../config/schema.js"
 import type { AgentConfig, AgentRegistry } from "./types.js"
+import type { SkillLoader } from "../shared/skill-loader.js"
+import { log } from "../shared/logger.js"
 
 /**
  * All builtin agent factories.
@@ -29,9 +31,13 @@ const agentSources: Record<string, AgentFactory> = {
 }
 
 /**
- * Create all builtin agents, applying user overrides from config.
+ * Create all builtin agents, applying user overrides from config
+ * and injecting skill content into instructions.
  */
-export function createBuiltinAgents(config: ChrisRiskWorkbenchConfig): AgentRegistry {
+export function createBuiltinAgents(
+  config: ChrisRiskWorkbenchConfig,
+  skillLoader: SkillLoader,
+): AgentRegistry {
   const registry: AgentRegistry = {}
   const disabledAgents = new Set(config.disabled_agents ?? [])
 
@@ -45,11 +51,11 @@ export function createBuiltinAgents(config: ChrisRiskWorkbenchConfig): AgentRegi
 
     // Apply user overrides
     const override: AgentOverride | undefined = config.agents?.[name]
-    if (override) {
-      registry[name] = applyOverride(baseAgent, override)
-    } else {
-      registry[name] = baseAgent
-    }
+    const agent = override ? applyOverride(baseAgent, override) : baseAgent
+
+    // Inject skill content into instructions
+    const finalAgent = injectSkills(agent, skillLoader)
+    registry[name] = finalAgent
   }
 
   return registry
@@ -68,7 +74,30 @@ function applyOverride(base: AgentConfig, override: AgentOverride): AgentConfig 
       instructions: base.instructions + "\n\n" + override.prompt_append,
     }),
     ...(override.tools && { tools: { ...base.tools, ...override.tools } }),
+    ...(override.skills && { skills: [...(base.skills ?? []), ...override.skills] }),
     ...(override.disable && { mode: "subagent" as const }), // disabled agents still registered but won't be primary
+  }
+}
+
+/**
+ * Inject skill content into agent's instructions.
+ * Merges agent-declared skills + user-configured skills,
+ * loads their content via SkillLoader, and appends to instructions.
+ */
+function injectSkills(agent: AgentConfig, skillLoader: SkillLoader): AgentConfig {
+  const skillNames = agent.skills ?? []
+  if (skillNames.length === 0) return agent
+
+  const skillBlock = skillLoader.buildSkillBlock(skillNames)
+  if (!skillBlock) {
+    log.warn(`No skill content found for agent ${agent.name} (requested: ${skillNames.join(", ")})`)
+    return agent
+  }
+
+  log.info(`Injected ${skillNames.length} skills into agent ${agent.name}`)
+  return {
+    ...agent,
+    instructions: agent.instructions + skillBlock,
   }
 }
 

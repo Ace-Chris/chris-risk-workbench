@@ -29,5 +29,6 @@ export const createCrossAdvisorAgent: AgentFactory = (model: string) => ({
   tools: { task: false, read: true, write: false, grep: true, skill_mcp: true },
   description: "跨界顾问 - 创意联想与跨领域洞察",
   color: "#E67E22",
+  skills: ["creative-problem-solver"],
 })
 createCrossAdvisorAgent.mode = "subagent" as const

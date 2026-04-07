@@ -15,6 +15,8 @@ export type AgentConfig = {
   temperature?: number
   description: string
   color?: string
+  /** Skill names to load and inject into this agent's instructions */
+  skills?: string[]
 }
 
 export type AgentFactory = ((model: string) => AgentConfig) & { mode: AgentMode }
