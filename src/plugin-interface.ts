@@ -18,13 +18,15 @@ export function createPluginInterface(args: {
 
   const result: Hooks = {
     config: async (input) => {
-      log.debug("config handler called")
+      log.info("config handler called — registering agents")
       const agentMap: Record<string, unknown> = {}
       for (const [name, agent] of Object.entries(agents)) {
-        agentMap[name] = toOpenCodeAgent(agent)
+        const ocAgent = toOpenCodeAgent(agent)
+        agentMap[name] = ocAgent
+        log.info("Agent: " + name + " | mode=" + (ocAgent as Record<string, unknown>).mode + " | hasDescription=" + !!((ocAgent as Record<string, unknown>).description))
       }
       input.agent = agentMap as Exclude<typeof input.agent, undefined>
-      log.info("Registered " + Object.keys(agentMap).length + " agents")
+      log.info("Registered " + Object.keys(agentMap).length + " agents into config.agent")
     },
     tool: tools,
     ...hooks,
