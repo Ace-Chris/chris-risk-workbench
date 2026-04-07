@@ -5,7 +5,7 @@
  *   <skillsDir>/<skill-name>/SKILL.md
  *   <skillsDir>/<skill-name>.md            (flat file fallback)
  *
- * Multiple search paths are supported (plugin-bundled + user-configured).
+ * Multiple search paths are supported (plugin-bundled + user-project + user-configured).
  */
 
 import { existsSync, readdirSync } from "fs"
@@ -107,32 +107,42 @@ export class SkillLoader {
 
 /**
  * Resolve skills search paths.
- * Priority:
- *  1. Plugin-bundled skills/ directory
- *  2. User-configured paths from config
+ *
+ * Searches in order:
+ *  1. Plugin-bundled skills/ directory (from pluginRoot)
+ *  2. Plugin-bundled .agents/skills/ directory (from pluginRoot)
+ *  3. User project skills/ directory (from projectDir)
+ *  4. User project .agents/skills/ directory (from projectDir)
+ *  5. User-configured custom paths (from config)
+ *
+ * Deduplicates by absolute path.
  */
-export function resolveSkillPaths(pluginDir: string, configPaths?: string[]): string[] {
+export function resolveSkillPaths(
+  pluginRoot: string,
+  projectDir: string,
+  configPaths?: string[],
+): string[] {
   const paths: string[] = []
 
-  // Plugin-bundled skills
-  const bundled = join(pluginDir, "skills")
-  if (existsSync(bundled)) {
-    paths.push(bundled)
+  const tryAdd = (p: string) => {
+    if (existsSync(p) && !paths.includes(p)) {
+      paths.push(p)
+    }
   }
 
-  // OpenCode standard skills directory (where skills.sh CLI installs to)
-  const agentsSkills = join(pluginDir, ".agents", "skills")
-  if (existsSync(agentsSkills) && !paths.includes(agentsSkills)) {
-    paths.push(agentsSkills)
-  }
+  // Plugin-bundled skills (plugin's own root directory)
+  tryAdd(join(pluginRoot, "skills"))
+  tryAdd(join(pluginRoot, ".agents", "skills"))
 
-  // User-configured paths
+  // User project skills (user's working directory)
+  tryAdd(join(projectDir, "skills"))
+  tryAdd(join(projectDir, ".agents", "skills"))
+
+  // User-configured paths (resolved relative to project directory)
   if (configPaths) {
     for (const p of configPaths) {
-      const abs = resolve(pluginDir, p)
-      if (existsSync(abs) && !paths.includes(abs)) {
-        paths.push(abs)
-      }
+      const abs = resolve(projectDir, p)
+      tryAdd(abs)
     }
   }
 
