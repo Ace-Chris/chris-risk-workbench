@@ -35,7 +35,7 @@ export const createAnalystAgent: AgentFactory = (model) => ({
   name: "分析师",
   instructions: ANALYST_INSTRUCTIONS,
   model,
-  mode: "primary",
+  mode: "all",
   fallback_models: [model],
   temperature: 0.3,
   tools: {

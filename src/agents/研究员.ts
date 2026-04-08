@@ -25,7 +25,7 @@ export const createResearcherAgent: AgentFactory = (model: string) => ({
   name: "研究员",
   instructions: RESEARCHER_INSTRUCTIONS,
   model,
-  mode: "primary" as const,
+  mode: "all" as const,
   fallback_models: [model],
   tools: { task: false, read: true, write: false, grep: true, skill_mcp: true, skill: true, bash: true },
   description: "研究员 - 深度搜索与知识综合",

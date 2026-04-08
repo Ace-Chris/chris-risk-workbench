@@ -39,7 +39,7 @@ export const createChrisAgent: AgentFactory = (model: string) => ({
   name: "chris",
   instructions: CHRIS_INSTRUCTIONS,
   model,
-  mode: "primary",
+  mode: "all",
   fallback_models: [model], // fallback = self
   tools: {
     task: true,

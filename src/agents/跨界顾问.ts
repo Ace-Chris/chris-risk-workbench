@@ -23,7 +23,7 @@ export const createCrossAdvisorAgent: AgentFactory = (model: string) => ({
   name: "跨界顾问",
   instructions: CROSS_ADVISOR_INSTRUCTIONS,
   model,
-  mode: "primary" as const,
+  mode: "all" as const,
   fallback_models: [model],
   temperature: 0.7,
   tools: { task: false, read: true, write: false, grep: true, skill_mcp: true },

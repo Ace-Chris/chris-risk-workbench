@@ -36,7 +36,7 @@ export const createChallengerAgent: AgentFactory = (model: string) => ({
   name: "质疑员",
   instructions: CHALLENGER_INSTRUCTIONS,
   model,
-  mode: "primary" as const,
+  mode: "all" as const,
   fallback_models: [model],
   temperature: 0.5,
   tools: { task: false, read: true, write: false, grep: true, skill_mcp: true },

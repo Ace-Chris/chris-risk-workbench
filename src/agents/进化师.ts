@@ -23,7 +23,7 @@ export const createEvolverAgent: AgentFactory = (model: string) => ({
   name: "进化师",
   instructions: EVOLVER_INSTRUCTIONS,
   model,
-  mode: "primary" as const,
+  mode: "all" as const,
   fallback_models: [model],
   tools: { task: false, read: true, write: true, grep: true, skill_mcp: true },
   description: "进化师 - 自我评估与系统改进",

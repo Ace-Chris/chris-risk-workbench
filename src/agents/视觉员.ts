@@ -25,7 +25,7 @@ export const createLookerAgent: AgentFactory = (model: string) => ({
   name: "视觉员",
   instructions: LOOKER_INSTRUCTIONS,
   model,
-  mode: "primary" as const,
+  mode: "all" as const,
   fallback_models: [model],
   tools: { task: false, read: true, write: false, grep: false, look_at: true, skill_mcp: true },
   description: "视觉员 - 多模态数据分析",
