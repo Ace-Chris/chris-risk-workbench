@@ -25,10 +25,6 @@ export function createPluginInterface(args: {
         agentMap[name] = ocAgent
         log.info("Agent: " + name + " | mode=" + (ocAgent as Record<string, unknown>).mode + " | hasDescription=" + !!((ocAgent as Record<string, unknown>).description))
       }
-      // Disable OpenCode built-in agents (plan, build)
-      // Follow omo pattern: set mode=subagent + disable to hide from Tab
-      agentMap["plan"] = { mode: "subagent", disable: true }
-      agentMap["build"] = { mode: "subagent", disable: true, hidden: true }
       input.agent = agentMap as Exclude<typeof input.agent, undefined>
       log.info("Registered " + Object.keys(agentMap).length + " agents (9 custom + plan/build disabled)")
     },
