@@ -34,23 +34,23 @@ export const AGENT_MODEL_MAP: Record<string, ModelConfig> = {
     mode: "subagent",
   },
   "研究员": {
-    model: "opencode/qwen3.6-plus-free",
+    model: "opencode/nemotron-3-super-free",
     fallback: "zai-coding-plan/glm-5.1",
     mode: "subagent",
   },
   "跨界顾问": {
-    model: "opencode/qwen3.6-plus-free",
+    model: "opencode/nemotron-3-super-free",
     fallback: "zai-coding-plan/glm-5.1",
     temperature: 0.7,
     mode: "subagent",
   },
   "框架师": {
-    model: "opencode/qwen3.6-plus-free",
+    model: "opencode/nemotron-3-super-free",
     fallback: "zai-coding-plan/glm-5.1",
     mode: "subagent",
   },
   "进化师": {
-    model: "opencode/qwen3.6-plus-free",
+    model: "opencode/nemotron-3-super-free",
     fallback: "zai-coding-plan/glm-5.1",
     mode: "subagent",
   },
