@@ -11,55 +11,55 @@ export type ModelConfig = {
 }
 
 export const AGENT_MODEL_MAP: Record<string, ModelConfig> = {
-  chris: {
-    model: "zai-coding-plan/glm-5.1",
-    fallback: "zai-coding-plan/glm-5.1",
-    mode: "primary",
-  },
-  "分析师": {
-    model: "zai-coding-plan/glm-5.1",
-    fallback: "zai-coding-plan/glm-5.1",
-    temperature: 0.3,
-    mode: "subagent",
-  },
-  "质疑员": {
-    model: "zai-coding-plan/glm-5.1",
-    fallback: "zai-coding-plan/glm-5.1",
-    temperature: 0.5,
-    mode: "subagent",
-  },
-  "工程师": {
-    model: "zai-coding-plan/glm-5.1",
-    fallback: "zai-coding-plan/glm-5.1",
-    mode: "subagent",
-  },
-  "研究员": {
-    model: "opencode/nemotron-3-super-free",
-    fallback: "zai-coding-plan/glm-5.1",
-    mode: "subagent",
-  },
-  "跨界顾问": {
-    model: "opencode/nemotron-3-super-free",
-    fallback: "zai-coding-plan/glm-5.1",
-    temperature: 0.7,
-    mode: "subagent",
-  },
-  "框架师": {
-    model: "opencode/nemotron-3-super-free",
-    fallback: "zai-coding-plan/glm-5.1",
-    mode: "subagent",
-  },
-  "进化师": {
-    model: "opencode/nemotron-3-super-free",
-    fallback: "zai-coding-plan/glm-5.1",
-    mode: "subagent",
-  },
-  "视觉员": {
-    model: "zai-coding-plan/glm-5v",
-    fallback: "zai-coding-plan/glm-5.1",
-    mode: "subagent",
-  },
-}
+   chris: {
+     model: "zai-coding-plan/glm-5.1",
+     fallback: "zai-coding-plan/glm-5.1",
+     mode: "primary",
+   },
+   "分析师": {
+     model: "zai-coding-plan/glm-5.1",
+     fallback: "zai-coding-plan/glm-5.1",
+     temperature: 0.3,
+     mode: "subagent",
+   },
+   "质疑员": {
+     model: "zai-coding-plan/glm-5.1",
+     fallback: "zai-coding-plan/glm-5.1",
+     temperature: 0.5,
+     mode: "subagent",
+   },
+   "工程师": {
+     model: "zai-coding-plan/glm-5.1",
+     fallback: "zai-coding-plan/glm-5.1",
+     mode: "subagent",
+   },
+   "研究员": {
+     model: "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+     fallback: "zai-coding-plan/glm-5.1",
+     mode: "subagent",
+   },
+   "跨界顾问": {
+     model: "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+     fallback: "zai-coding-plan/glm-5.1",
+     temperature: 0.7,
+     mode: "subagent",
+   },
+   "框架师": {
+     model: "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+     fallback: "zai-coding-plan/glm-5.1",
+     mode: "subagent",
+   },
+   "进化师": {
+     model: "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+     fallback: "zai-coding-plan/glm-5.1",
+     mode: "subagent",
+   },
+   "视觉员": {
+     model: "zai-coding-plan/glm-5v",
+     fallback: "zai-coding-plan/glm-5.1",
+     mode: "subagent",
+   },
+ }
 
 /** Get model for an agent, with optional user override */
 export function resolveAgentModel(

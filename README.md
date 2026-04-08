@@ -25,10 +25,10 @@ npm install && npx tsc
 | **分析师** | 数据分析 | glm-5.1 | 数据探索、统计分析、IV/WOE 计算 |
 | **质疑员** | 逻辑辩论 | glm-5.1 | 审查结论和策略的合理性 |
 | **工程师** | 特征工程 | glm-5.1 | 特征衍生、代码生成 |
-| **研究员** | 深度搜索 | nemotron-3-super | 行业研究、竞品分析 |
-| **跨界顾问** | 创意联想 | nemotron-3-super | 提供跨领域视角，辩论时 |
-| **框架师** | 方法论推荐 | nemotron-3-super | 推荐分析框架、搜索知识库时 |
-| **进化师** | 系统改进 | nemotron-3-super | 复盘、评估、经验沉淀 |
+| **研究员** | 深度搜索 | nemotron-3-super (OpenRouter Free) | 行业研究、竞品分析 |
+| **跨界顾问** | 创意联想 | nemotron-3-super (OpenRouter Free) | 提供跨领域视角，辩论时 |
+| **框架师** | 方法论推荐 | nemotron-3-super (OpenRouter Free) | 推荐分析框架、搜索知识库时 |
+| **进化师** | 系统改进 | nemotron-3-super (OpenRouter Free) | 复盘、评估、经验沉淀 |
 | **视觉员** | 多模态 | glm-5v | 图片OCR、图表解读、证件识别 |
 
 ## 核心特性
