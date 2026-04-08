@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "0dd00b635a9daee1ba0e4ab4cbf009b3e84864001c8ae11fa453b9204482b55d"
     },
+    "agent-browser": {
+      "source": "vercel-labs/agent-browser",
+      "sourceType": "github",
+      "computedHash": "fc173a14ecea820739ea971bf81eddbf94e12ce99312fb83e55342724316c5dd"
+    },
     "agent-evaluation": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
@@ -15,6 +20,11 @@
       "source": "inferen-sh/skills",
       "sourceType": "github",
       "computedHash": "9ee6d37669b89f87bb0b1e1f89bf06cca35d69d461786a3fb847b07c4f2c8375"
+    },
+    "brainstorming": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "f483c304fcde060211ffae00f49bb728536e7e7613c99db45b5b924d9fc17243"
     },
     "browser-use": {
       "source": "browser-use/browser-use",
@@ -36,6 +46,11 @@
       "sourceType": "github",
       "computedHash": "36ba944ee6b0a5cc313fbf05181d29dd375ecafd32c4d42e9da0de6b5e5b9dcb"
     },
+    "docx": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "150be87ff7b18f273ad07da303adb1cf2ca21cc3e76db7a2cf0373405178a278"
+    },
     "exploratory-data-analysis": {
       "source": "davila7/claude-code-templates",
       "sourceType": "github",
@@ -56,10 +71,30 @@
       "sourceType": "github",
       "computedHash": "4177348db0e4245c787753f5ec3c2b471b48c24a8f63b870bd02a80ba15ec77e"
     },
+    "pdf": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "37226d4220d844377e6b2a386c51a011df4cd130855ff0b80bcc22f9c28abd57"
+    },
     "self-improving-agent": {
       "source": "charon-fan/agent-playbook",
       "sourceType": "github",
       "computedHash": "f52b5577f09152ab9c2577f6fd6bd4d23ba87acc884dfc3e90a551949f0d90f1"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "72e9ab72627e4fd8ed26a582e82309a98ecdc4f6e1c99418430ac05682c9e91d"
+    },
+    "verification-before-completion": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "9b446f0c7fe1cfb560b1d34439523b1a76d5f177290007b2c053a1c749a4a8ba"
+    },
+    "writing-plans": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "bfaed11054ad8021c66860244e2d2e0d1eca483ae9f5fbfcb956e99c61f5c3d7"
     },
     "xlsx": {
       "source": "anthropics/skills",
