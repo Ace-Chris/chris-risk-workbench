@@ -23,7 +23,7 @@ export const createCrossAdvisorAgent: AgentFactory = (model: string) => ({
   name: "跨界顾问",
   instructions: CROSS_ADVISOR_INSTRUCTIONS,
   model,
-  mode: "subagent" as const,
+  mode: "primary" as const,
   fallback_models: [model],
   temperature: 0.7,
   tools: { task: false, read: true, write: false, grep: true, skill_mcp: true },
@@ -31,4 +31,4 @@ export const createCrossAdvisorAgent: AgentFactory = (model: string) => ({
   color: "#E67E22",
   skills: ["creative-problem-solver"],
 })
-createCrossAdvisorAgent.mode = "subagent" as const
+createCrossAdvisorAgent.mode = "primary" as const

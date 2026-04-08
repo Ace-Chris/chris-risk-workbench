@@ -23,11 +23,11 @@ export const createEvolverAgent: AgentFactory = (model: string) => ({
   name: "进化师",
   instructions: EVOLVER_INSTRUCTIONS,
   model,
-  mode: "subagent" as const,
+  mode: "primary" as const,
   fallback_models: [model],
   tools: { task: false, read: true, write: true, grep: true, skill_mcp: true },
   description: "进化师 - 自我评估与系统改进",
   color: "#8E44AD",
   skills: ["self-improving-agent", "agent-evaluation"],
 })
-createEvolverAgent.mode = "subagent" as const
+createEvolverAgent.mode = "primary" as const

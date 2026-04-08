@@ -49,7 +49,7 @@ export const createEngineerAgent: AgentFactory = (model) => ({
   name: "工程师",
   instructions: ENGINEER_INSTRUCTIONS,
   model,
-  mode: "subagent",
+  mode: "primary",
   fallback_models: [model],
   tools: {
     task: false,
@@ -64,4 +64,4 @@ export const createEngineerAgent: AgentFactory = (model) => ({
   skills: ["feature-engineering"],
 })
 
-createEngineerAgent.mode = "subagent"
+createEngineerAgent.mode = "primary"

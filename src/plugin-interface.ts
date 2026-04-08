@@ -25,8 +25,11 @@ export function createPluginInterface(args: {
         agentMap[name] = ocAgent
         log.info("Agent: " + name + " | mode=" + (ocAgent as Record<string, unknown>).mode + " | hasDescription=" + !!((ocAgent as Record<string, unknown>).description))
       }
+      // Disable OpenCode built-in agents (plan, build)
+      agentMap["plan"] = { disable: true }
+      agentMap["build"] = { disable: true }
       input.agent = agentMap as Exclude<typeof input.agent, undefined>
-      log.info("Registered " + Object.keys(agentMap).length + " agents into config.agent")
+      log.info("Registered " + Object.keys(agentMap).length + " agents (9 custom + plan/build disabled)")
     },
     tool: tools,
     ...hooks,

@@ -25,11 +25,11 @@ export const createResearcherAgent: AgentFactory = (model: string) => ({
   name: "研究员",
   instructions: RESEARCHER_INSTRUCTIONS,
   model,
-  mode: "subagent" as const,
+  mode: "primary" as const,
   fallback_models: [model],
   tools: { task: false, read: true, write: false, grep: true, skill_mcp: true, skill: true, bash: true },
   description: "研究员 - 深度搜索与知识综合",
   color: "#9B59B6",
   skills: ["parallel-deep-research", "browser-use"],
 })
-createResearcherAgent.mode = "subagent" as const
+createResearcherAgent.mode = "primary" as const

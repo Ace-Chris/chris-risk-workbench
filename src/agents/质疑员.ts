@@ -36,7 +36,7 @@ export const createChallengerAgent: AgentFactory = (model: string) => ({
   name: "质疑员",
   instructions: CHALLENGER_INSTRUCTIONS,
   model,
-  mode: "subagent" as const,
+  mode: "primary" as const,
   fallback_models: [model],
   temperature: 0.5,
   tools: { task: false, read: true, write: false, grep: true, skill_mcp: true },
@@ -44,4 +44,4 @@ export const createChallengerAgent: AgentFactory = (model: string) => ({
   color: "#E74C3C",
   skills: ["critical-thinking-logical-reasoning"],
 })
-createChallengerAgent.mode = "subagent" as const
+createChallengerAgent.mode = "primary" as const

@@ -35,7 +35,7 @@ export const createAnalystAgent: AgentFactory = (model) => ({
   name: "分析师",
   instructions: ANALYST_INSTRUCTIONS,
   model,
-  mode: "subagent",
+  mode: "primary",
   fallback_models: [model],
   temperature: 0.3,
   tools: {
@@ -52,4 +52,4 @@ export const createAnalystAgent: AgentFactory = (model) => ({
   skills: ["xlsx", "data-analysis"],
 })
 
-createAnalystAgent.mode = "subagent"
+createAnalystAgent.mode = "primary"
