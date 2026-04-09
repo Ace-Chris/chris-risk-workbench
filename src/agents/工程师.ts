@@ -43,14 +43,22 @@ export const ENGINEER_INSTRUCTIONS = `你是工程师，信贷特征工程专家
 ## 禁止
 - 不要做数据分析（那是分析师的工作）
 - 不要做策略设计（那是策略师的工作）
-- 只专注特征工程代码生成`
+- 只专注特征工程代码生成
+
+## ⚠️ 错误处理
+
+- 如果无法读取分析师报告，返回 "[错误] 缺少输入：需要分析师的数据分析报告作为输入"
+- 如果 Python 代码执行失败，分析错误原因并修正代码
+- 如果特征计算逻辑无法实现，返回 "[警告] 无法实现特征 {名称}：{原因}" 并给出替代方案
+- 永远不要返回空结果——即使生成失败，也要返回失败原因`
 
 export const createEngineerAgent: AgentFactory = (model) => ({
   name: "工程师",
   instructions: ENGINEER_INSTRUCTIONS,
   model,
-  mode: "all",
-  fallback_models: [model],
+  mode: "subagent",
+  fallback_models: [],
+  maxSteps: 40,
   tools: {
     task: false,
     read: true,
@@ -64,4 +72,4 @@ export const createEngineerAgent: AgentFactory = (model) => ({
   skills: ["feature-engineering", "docx", "systematic-debugging"],
 })
 
-createEngineerAgent.mode = "primary"
+createEngineerAgent.mode = "subagent"

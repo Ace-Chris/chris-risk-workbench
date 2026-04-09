@@ -64,6 +64,8 @@ export const ChrisRiskWorkbenchConfigSchema = z.object({
   frameworks_path: z.string().optional(),
   debate: DebateConfigSchema.optional(),
   skills_path: z.string().optional(),
+  /** Global fallback model chain — tried in order when the primary model fails */
+  fallback_models: z.array(z.string()).optional(),
 })
 
 export type ChrisRiskWorkbenchConfig = z.infer<typeof ChrisRiskWorkbenchConfigSchema>

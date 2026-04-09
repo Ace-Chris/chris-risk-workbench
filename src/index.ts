@@ -58,7 +58,7 @@ const ChrisRiskWorkbenchPlugin: Plugin = async (ctx) => {
   const agents = createBuiltinAgents(config, skillLoader)
   log.info("Agents created")
 
-  const tools = createToolRegistry(config, managers)
+  const tools = createToolRegistry(managers, config)
   log.info("Tools created")
 
   // Mode detection uses user's project directory (data/, features/, strategy/)

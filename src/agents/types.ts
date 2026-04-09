@@ -17,6 +17,8 @@ export type AgentConfig = {
   color?: string
   /** Skill names to load and inject into this agent's instructions */
   skills?: string[]
+  /** Maximum number of agentic iterations before forcing text-only response */
+  maxSteps?: number
 }
 
 export type AgentFactory = ((model: string) => AgentConfig) & { mode: AgentMode }
@@ -26,13 +28,14 @@ export type AgentRegistry = { [key: string]: AgentConfig }
 /**
  * Convert our internal AgentConfig to OpenCode SDK's AgentConfig format.
  * Maps `instructions` to `prompt`, drops `name` (key IS the name).
+ * Passes through `fallback_models` and `maxSteps` as extra fields —
+ * these are handled by omo (oh-my-openagent) runtime if present.
  */
 export function toOpenCodeAgent(agent: AgentConfig): { [key: string]: unknown } {
   const result: { [key: string]: unknown } = {
     prompt: agent.instructions,
     model: agent.model,
     mode: agent.mode,
-    fallback_models: agent.fallback_models,
   }
   if (agent.temperature !== undefined) {
     result.temperature = agent.temperature
@@ -45,6 +48,12 @@ export function toOpenCodeAgent(agent: AgentConfig): { [key: string]: unknown } 
   }
   if (agent.description) {
     result.description = agent.description
+  }
+  if (agent.maxSteps !== undefined) {
+    result.maxSteps = agent.maxSteps
+  }
+  if (agent.fallback_models && agent.fallback_models.length > 0) {
+    result.fallback_models = agent.fallback_models
   }
   return result
 }
