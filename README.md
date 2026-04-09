@@ -29,7 +29,7 @@ npm install && npx tsc
 | **跨界顾问** | 创意联想 | nemotron-3-super (OpenRouter Free) | 提供跨领域视角，辩论时 |
 | **框架师** | 方法论推荐 | nemotron-3-super (OpenRouter Free) | 推荐分析框架、搜索知识库时 |
 | **进化师** | 系统改进 | nemotron-3-super (OpenRouter Free) | 复盘、评估、经验沉淀 |
-| **视觉员** | 多模态 | glm-5v | 图片OCR、图表解读、证件识别 |
+| **视觉员** | 多模态 | glm-5v-turbo | 图片OCR、图表解读、证件识别 |
 
 ## 核心特性
 

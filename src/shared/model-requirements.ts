@@ -63,11 +63,11 @@ export const AGENT_MODEL_MAP: Record<string, ModelConfig> = {
      fallback: "zai-coding-plan/glm-5.1",
      mode: "subagent",
    },
-   "视觉员": {
-     model: "zai-coding-plan/glm-5v",
-     fallback: "zai-coding-plan/glm-5.1",
-     mode: "subagent",
-   },
+"视觉员": {
+  model: "zai-coding-plan/glm-5v-turbo",
+  fallback: "zai-coding-plan/glm-5.1",
+  mode: "subagent",
+},
 }
 
 /** Get model for an agent, with optional user override */
