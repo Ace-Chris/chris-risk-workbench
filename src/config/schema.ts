@@ -117,8 +117,8 @@ export function getAgentModelConfig(
 
   if (!base) {
     return {
-      model: override?.model ?? "zai-coding-plan/glm-5.1",
-      fallback: override?.fallback_models?.[0] ?? "zai-coding-plan/glm-5.1",
+      model: override?.model ?? "opencode/glm-5.1",
+      fallback: override?.fallback_models?.[0] ?? "opencode/glm-5.1",
       temperature: override?.temperature,
       mode: "subagent",
     }

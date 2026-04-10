@@ -53,23 +53,26 @@ export const ENGINEER_INSTRUCTIONS = `你是工程师，信贷特征工程专家
 - 永远不要返回空结果——即使生成失败，也要返回失败原因`
 
 export const createEngineerAgent: AgentFactory = (model) => ({
-  name: "工程师",
-  instructions: ENGINEER_INSTRUCTIONS,
-  model,
-  mode: "subagent",
-  fallback_models: [],
-  maxSteps: 40,
-  tools: {
-    task: false,
-    read: true,
-    write: true,
-    grep: true,
-    bash: true,
-    skill_mcp: true,
-  },
-  description: "工程师 - 特征工程代码生成",
-  color: "#2196F3",
-  skills: ["feature-engineering", "docx", "systematic-debugging"],
-})
+   name: "工程师",
+   instructions: ENGINEER_INSTRUCTIONS,
+   model: model ?? "",
+   mode: "subagent",
+   fallback_models: [],
+   temperature: 0.2,
+   maxSteps: 30,
+   tools: {
+     task: false,
+     read: true,
+     write: true,
+     edit: true,
+     skill_mcp: true,
+     skill: true,
+     grep: true,
+     bash: true,
+   },
+   description: "工程师 - 特征工程代码生成",
+   color: "#45B7D1",
+   skills: ["feature-engineering"],
+ })
 
 createEngineerAgent.mode = "subagent"

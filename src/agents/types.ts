@@ -6,19 +6,19 @@
 export type AgentMode = "primary" | "subagent" | "all"
 
 export type AgentConfig = {
-  name: string
-  instructions: string
-  model: string
-  mode: AgentMode
-  fallback_models: string[]
-  tools?: { [key: string]: boolean }
-  temperature?: number
-  description: string
-  color?: string
-  /** Skill names to load and inject into this agent's instructions */
-  skills?: string[]
-  /** Maximum number of agentic iterations before forcing text-only response */
-  maxSteps?: number
+   name: string
+   instructions: string
+   model: string | undefined
+   mode: AgentMode
+   fallback_models: string[]
+   tools?: { [key: string]: boolean }
+   temperature?: number
+   description: string
+   color?: string
+   /** Skill names to load and inject into this agent's instructions */
+   skills?: string[]
+   /** Maximum number of agentic iterations before forcing text-only response */
+   maxSteps?: number
 }
 
 export type AgentFactory = ((model: string) => AgentConfig) & { mode: AgentMode }
@@ -32,28 +32,30 @@ export type AgentRegistry = { [key: string]: AgentConfig }
  * these are handled by omo (oh-my-openagent) runtime if present.
  */
 export function toOpenCodeAgent(agent: AgentConfig): { [key: string]: unknown } {
-  const result: { [key: string]: unknown } = {
-    prompt: agent.instructions,
-    model: agent.model,
-    mode: agent.mode,
-  }
-  if (agent.temperature !== undefined) {
-    result.temperature = agent.temperature
-  }
-  if (agent.color) {
-    result.color = agent.color
-  }
-  if (agent.tools) {
-    result.tools = agent.tools
-  }
-  if (agent.description) {
-    result.description = agent.description
-  }
-  if (agent.maxSteps !== undefined) {
-    result.maxSteps = agent.maxSteps
-  }
-  if (agent.fallback_models && agent.fallback_models.length > 0) {
-    result.fallback_models = agent.fallback_models
-  }
-  return result
-}
+   const result: { [key: string]: unknown } = {
+     prompt: agent.instructions,
+     mode: agent.mode,
+   }
+   if (agent.model !== undefined && agent.model !== "") {
+     result.model = agent.model
+   }
+   if (agent.temperature !== undefined) {
+     result.temperature = agent.temperature
+   }
+   if (agent.color) {
+     result.color = agent.color
+   }
+   if (agent.tools) {
+     result.tools = agent.tools
+   }
+   if (agent.description) {
+     result.description = agent.description
+   }
+   if (agent.maxSteps !== undefined) {
+     result.maxSteps = agent.maxSteps
+   }
+   if (agent.fallback_models && agent.fallback_models.length > 0) {
+     result.fallback_models = agent.fallback_models
+   }
+   return result
+ }

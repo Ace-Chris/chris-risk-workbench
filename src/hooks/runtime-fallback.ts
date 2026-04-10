@@ -96,11 +96,11 @@ function isModelInCooldown(model: string, state: FallbackState): boolean {
 // === Fallback Chain Resolution ===
 
 function getFallbackModels(config: ChrisRiskWorkbenchConfig): string[] {
-  const fallbacks = config.fallback_models ?? []
-  if (fallbacks.length === 0) {
-    return ["zai-coding-plan/glm-5.1"]
-  }
-  return fallbacks
+   const fallbacks = config.fallback_models ?? []
+   if (fallbacks.length === 0) {
+     return [""]
+   }
+   return fallbacks
 }
 
 function selectNextFallback(

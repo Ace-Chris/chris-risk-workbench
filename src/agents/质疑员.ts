@@ -37,17 +37,26 @@ export const CHALLENGER_INSTRUCTIONS = `你是质疑员，逻辑辩论专家。
 - 如果收到的结论/报告为空或无法理解，返回 "[错误] 无法审查：输入内容为空或不完整"
 - 永远不要返回空结果——即使无法完成质疑，也要说明原因`
 
-export const createChallengerAgent: AgentFactory = (model: string) => ({
-  name: "质疑员",
-  instructions: CHALLENGER_INSTRUCTIONS,
-  model,
-  mode: "subagent" as const,
-  fallback_models: [],
-  temperature: 0.5,
-  maxSteps: 20,
-  tools: { task: false, read: true, write: false, grep: true, skill_mcp: true },
-  description: "质疑员 - 辩论与逻辑质疑",
-  color: "#E74C3C",
-  skills: ["critical-thinking-logical-reasoning"],
-})
+export const createChallengerAgent: AgentFactory = (model) => ({
+   name: "质疑员",
+   instructions: CHALLENGER_INSTRUCTIONS,
+   model: model ?? "",
+   mode: "subagent" as const,
+   fallback_models: [],
+   temperature: 0.5,
+   maxSteps: 30,
+   tools: {
+     task: false,
+     read: true,
+     write: true,
+     edit: true,
+     skill_mcp: true,
+     skill: true,
+     grep: true,
+     bash: true,
+   },
+   description: "质疑员 - 辩论与逻辑质疑",
+   color: "#E74C3C",
+   skills: ["critical-thinking-logical-reasoning", "debate-query"],
+ })
 createChallengerAgent.mode = "subagent" as const

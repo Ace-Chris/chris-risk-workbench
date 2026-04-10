@@ -71,26 +71,26 @@ export const CHRIS_INSTRUCTIONS = `你是 Chris（主编），信贷风控工作
 3. 预期产出（完成后用户能得到什么）
 4. 异常信息（如有任何 Agent 出错，必须在此说明）`
 
-export const createChrisAgent: AgentFactory = (model: string) => ({
-  name: "chris",
-  instructions: CHRIS_INSTRUCTIONS,
-  model,
-  mode: "all",
-  fallback_models: [model], // fallback = self
-  tools: {
-    task: true,
-    skill_mcp: true,
-    skill: true,
-    read: true,
-    write: true,
-    grep: false, // chris does not search code
-    bash: false,   // chris does not run commands
-    look_at: false, // chris delegates to 视觉员
-  },
-  maxSteps: 50,
-  description: "主编 - 任务调度与综合",
-  color: "#FF6B35",
-  skills: ["find-skills"],
-})
+export const createChrisAgent: AgentFactory = (model) => ({
+   name: "chris",
+   instructions: CHRIS_INSTRUCTIONS,
+   model: model ?? "",
+   mode: "all",
+   fallback_models: [(model ?? "")], // fallback = self
+   tools: {
+     task: true,
+     skill_mcp: true,
+     skill: true,
+     read: true,
+     write: true,
+     grep: false, // chris does not search code
+     bash: false,   // chris does not run commands
+     look_at: false, // chris delegates to 视觉员
+   },
+   maxSteps: 50,
+   description: "主编 - 任务调度与综合",
+   color: "#FF6B35",
+   skills: ["find-skills"],
+ })
 
 createChrisAgent.mode = "primary"
