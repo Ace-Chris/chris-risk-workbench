@@ -243,6 +243,44 @@ pseudo_code | notes
 - 更新对应的维度模板文件
 - 或创建新的领域维度模板
 
+## 5.5 提交到GitHub（让经验不丢失）
+
+归档完成后，必须将改动提交到Git仓库：
+
+```bash
+# 1. 查看变更
+git status
+git diff --stat
+
+# 2. 暂存所有特征工程相关文件
+git add skills/feature-engineering/
+git add skills/self-improving-agent/memory/semantic-patterns.json
+# 同步 .agents/ 目录（如果存在镜像）
+git add .agents/skills/feature-engineering/
+git add .agents/skills/self-improving-agent/memory/semantic-patterns.json
+
+# 3. 提交
+git commit -m "feat: archive {项目名} project experience + {N} new patterns"
+
+# 4. 推送
+git push origin main
+```
+
+**为什么这一步必须写进SKILL而不是靠记忆？**
+- 归档的目的是让经验持久化——如果忘了commit/push，经验只存在本地，换台电脑就丢失
+- Git commit message也是记忆的一部分——`git log` 可以追溯每次进化
+- 这是"闭环的最后一环"：没有push的归档 = 没有归档
+
+### 归档流程总结（Phase 5完整checklist）
+
+```
+□ 5.1 写入 project-archives/{项目}.json
+□ 5.2 提取新模式到 semantic-patterns.json（去重）
+□ 5.3 写入 episodic/ 具体经历
+□ 5.4 更新 dimension-templates/（如有新发现）
+□ 5.5 git add → commit → push 到 GitHub
+```
+
 ---
 
 # 记忆系统说明
