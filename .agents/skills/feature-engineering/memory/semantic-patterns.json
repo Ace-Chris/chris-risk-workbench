@@ -1,0 +1,205 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "last_updated": "2026-04-14",
+    "total_patterns": 10,
+    "source_project": "MTN_MoMo_Advance_V1",
+    "categories": [
+      "data_validation",
+      "null_handling",
+      "naming_convention",
+      "boundary_condition",
+      "design_logic",
+      "cross_layer_integrity",
+      "documentation"
+    ]
+  },
+  "patterns": {
+    "field_existence_verification": {
+      "id": "fe-pat-001",
+      "name": "字段存在性验证（最关键）",
+      "severity": "P0",
+      "source_projects": ["2026-04_MTN_MoMo"],
+      "confidence": 0.99,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "data_validation",
+      "pattern": "在引用任何字段设计特征之前，必须先验证该字段在原始数据中确实存在。不能依赖数据字典或假设。",
+      "problem": "引用不存在的字段会导致所有下游特征运行时报错。MTN项目中SMS字段(gsm_sms_qty_*)在数据中完全不存在但被引用了4个特征；gsm_la_days_qty只有总量没有1m/3m/6m版本。",
+      "prevention": [
+        "Phase 0中必须执行: set(设计文档引用字段) - set(df.columns) = 应该为空集",
+        "特别注意1m/3m/6m窗口字段——不是所有字段都有三个窗口版本",
+        "字段名中的细节(anum vs bnum, recv vs received)必须与CSV精确匹配",
+        "对每个域列出实际存在的字段清单，标注哪些有1m/3m/6m哪些没有"
+      ],
+      "mtm_episodes": ["SMS字段不存在导致4个特征删除", "gsm_la_days无1m/3m/6m导致2个特征删除", "gsm_uniq_out是bnum不是anum导致全局替换"]
+    },
+    "denominator_zero_guard": {
+      "id": "fe-pat-002",
+      "name": "分母=0显式保护",
+      "severity": "P0",
+      "source_projects": ["2026-04_MTN_MoMo"],
+      "confidence": 0.98,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "boundary_condition",
+      "pattern": "所有比率/均值特征的pseudo_code必须包含显式的分母=0处理逻辑。禁止依赖clip或隐式行为。",
+      "problem": "amt/qty类特征在qty=0时产生inf或nan，进入模型后导致训练崩溃。MTN项目中有85+个比率特征需要保护。",
+      "prevention": [
+        "标准模板: np.where(df['denominator']>0, numerator/denominator, fallback_value)",
+        "fallback_value规则: MoMo金额→999(表示缺失), GSM数值→999, KYC→-999, 计算结果缺失→-999",
+        "不要用 +0.01 这种hack——它改变了数学含义（qty=0时threshold=0.03导致误报）",
+        "sudden_surge_flag类特征：分母=0时不应触发，必须加前置条件 guard"
+      ],
+      "mtm_episodes": ["sudden_surge_flag在qty_3m=0时误报率极高"]
+    },
+    "missing_vs_zero_distinction": {
+      "id": "fe-pat-003",
+      "name": "缺失≠零：is_missing标志的必要性",
+      "severity": "P1",
+      "source_projects": ["2026-04_MTN_MoMo"],
+      "confidence": 0.95,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "null_handling",
+      "pattern": "高空值率(>30%)的域必须在L0生成is_missing标志，且在空值填充前计算。'从未使用该服务'和'数据丢失'是两种完全不同的语义。",
+      "problem": "MoMo字段53-57%空值率——如果直接填0，模型无法区分'从不使用P2P的人'和'活跃用户本月没交易'。这会导致严重的特征偏差。",
+      "prevention": [
+        "空值率>30%的每个子域，生成1个is_missing标志(0/1)",
+        "is_missing标志必须在fillna(0)之前计算",
+        "下游特征引用该域时，必须检查is_missing==1则返回-999而非计算结果",
+        "缺失计数(missing_count)本身也是高信息量特征"
+      ],
+      "mtm_episodes": ["8个MoMo缺失标志是整个衍生方案中信息量最高的特征之一"]
+    },
+    "naming_contract_single_source": {
+      "id": "fe-pat-004",
+      "name": "命名即契约：单一来源 + 全局搜索验证",
+      "severity": "P1",
+      "source_projects": ["2026-04_MTN_MoMo"],
+      "confidence": 0.95,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "naming_convention",
+      "pattern": "命名规则确定后写入规范文档(00_规范)作为single source of truth，设计完成后全局搜索验证一致性。一旦有歧义(如recv vs received)，立即选定一个并全局替换。",
+      "problem": "MTN项目中bill_is_missing vs bill_pay_is_missing跨11处不一致，p2p_received vs p2p_recv跨22处不一致。修复耗时超过2小时。",
+      "prevention": [
+        "在00_规范中列出所有缩写映射表：recv(非received), bill_pay(非bill), bnum(非anum)",
+        "每完成一个域的特征设计，立即grep验证该域内命名一致性",
+        "设计完成后，用脚本全局搜索所有可能的变体写法",
+        "伪代码中的字段名必须与input_fields列完全一致"
+      ],
+      "mtm_episodes": ["第6轮审查修复33处命名不一致"]
+    },
+    "multiplication_veto_avoidance": {
+      "id": "fe-pat-005",
+      "name": "乘法一票否决风险",
+      "severity": "P2",
+      "source_projects": ["2026-04_MTN_MoMo"],
+      "confidence": 0.90,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "design_logic",
+      "pattern": "多维度组合评分默认用加法（或加权求和），只有明确需要AND逻辑时才用乘法。乘法会导致任一维度=0时整体归零。",
+      "problem": "digital_maturity_score = channel_count × has_balance × has_data。当用户无余额(has_balance=0)时，即使他用了7个渠道且大量数据流量，得分=0。这丢失了大量信息。",
+      "prevention": [
+        "多维度评分默认: score = w1*dim1 + w2*dim2 + w3*dim3",
+        "需要AND逻辑时: 用min()或gate函数，而非直接乘法",
+        "乘法组合必须加缺失保护: has_x = np.where(is_missing, 0, (x>0).astype(int))"
+      ],
+      "mtm_episodes": ["digital_maturity_score从乘法改为加法，范围[0,7]→[0,9]"]
+    },
+    "truncation_semantic_match": {
+      "id": "fe-pat-006",
+      "name": "截断范围必须匹配语义类型",
+      "severity": "P2",
+      "source_projects": ["2026-04_MTN_MoMo"],
+      "confidence": 0.90,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "boundary_condition",
+      "pattern": "每个特征的截断范围(value_range)必须独立判断，不能复制粘贴。金额不能clip(-10,10)，比率不能clip(0,99999)。",
+      "problem": "momo_balance用clip(-10,10)截断——余额可能是几百万，clip到[-10,10]完全无意义。这是因为它是'slope'类别但实际不是slope。",
+      "prevention": [
+        "建立截断类型速查表: RATIO:[0,100], MOMENTUM:[-10,10], AMOUNT:无截断, FLAG:[0,1]",
+        "每个特征写value_range时问自己: 这个值的自然范围是什么？",
+        "金额类永远不要用SLOPE截断范围",
+        "单点值(非趋势)不要叫slope，命名应反映真实语义"
+      ],
+      "mtm_episodes": ["balance_slope改名为balance_level，截断从SLOPE改为AMOUNT+log1p变换"]
+    },
+    "duplicate_feature_detection": {
+      "id": "fe-pat-007",
+      "name": "重复特征检测（公式等价）",
+      "severity": "P1",
+      "source_projects": ["2026-04_MTN_MoMo"],
+      "confidence": 0.92,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "design_logic",
+      "pattern": "设计完成后，检查所有特征对之间是否存在公式完全等价（只是命名不同）。特别是 avg=amt/qty 和 unit_amt=amt/qty 这种。",
+      "problem": "avg_txn_amt_6m 和 unit_amt_6m 公式完全相同（amt_6m/qty_6m），浪费了3个特征位。",
+      "prevention": [
+        "设计时统一命名: 用 unit_amt (单笔金额) 不用 avg_txn_amt (平均交易金额)，两者公式相同",
+        "每完成一个域，检查同域内是否有公式重叠",
+        "建立 redundancy_group 标记，同组内特征应有不同公式"
+      ],
+      "mtm_episodes": ["L1删除3个avg_txn_amt特征（与unit_amt重复）"]
+    },
+    "layer_output_field_naming": {
+      "id": "fe-pat-008",
+      "name": "跨层字段名一致性（L0输出 vs L2引用）",
+      "severity": "P0",
+      "source_projects": ["2026-04_MTN_MoMo"],
+      "confidence": 0.95,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "cross_layer_integrity",
+      "pattern": "L0输出的字段名必须与L1/L2/L3/L4中pseudo_code引用的名字完全一致。设计时以L0的feature_name列为准。",
+      "problem": "L0日期转换输出名为 mtn_m_p2p_send_recency_days，但L2 pseudo_code引用的是 mom_p2p_send_last_date_days——这个字段既不在CSV中也不是L0输出，运行时必报错。",
+      "prevention": [
+        "L0完成后，导出所有feature_name作为'可用字段清单'",
+        "L1-L4设计时，所有pseudo_code中的df['xxx']必须出现在该清单或CSV列名中",
+        "命名规则: L0清洗保持原名，L0新增衍生加前缀（如mtn_m_），两者不要混用",
+        "用自动化脚本在Phase 0做交叉验证"
+      ],
+      "mtm_episodes": ["L2时间差异4个特征引用了不存在的日期字段名"]
+    },
+    "no_tongshang_in_16_columns": {
+      "id": "fe-pat-009",
+      "name": "16列标准格式禁止'同上'",
+      "severity": "P2",
+      "source_projects": ["2026-04_MTN_MoMo"],
+      "confidence": 0.90,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "documentation",
+      "pattern": "每个特征的每列必须有独立实质内容，不能用'同上'、'同前'、空值。尤其是null_handling列，每个特征的缺失处理策略可能不同。",
+      "problem": "85个特征的null_handling写了'同上'，导致工程师无法直接执行，必须回头看前一个特征的处理方式。",
+      "prevention": [
+        "设计规范中明确: 16列不允许出现'同上'、'-'、空值",
+        "完成后用脚本扫描所有行，检测空列或'同上'",
+        "null_handling必须写明具体策略: '已在L0填0', '分母=0→999', '缺失→-999'"
+      ],
+      "mtm_episodes": ["第8轮审查展开85个'同上'为明确的null_handling描述"]
+    },
+    "markdown_pipe_escape": {
+      "id": "fe-pat-010",
+      "name": "Markdown管道符转义在Excel解析时的问题",
+      "severity": "P2",
+      "source_projects": ["2026-04_MTN_MoMo"],
+      "confidence": 0.90,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "documentation",
+      "pattern": "pseudo_code中使用 \\| 做逻辑或时，Markdown表格解析会将其当作列分隔符。必须在解析前先替换为占位符。",
+      "problem": "16个slope特征的pseudo_code含 \\| (Markdown转义管道符)，导致Excel解析列错位。",
+      "prevention": [
+        "pseudo_code中避免使用 | 和 \\|，改用 np.logical_or() 或 & | 运算符写在变量赋值中",
+        "如果必须用，在Excel解析脚本中先替换 \\| 和 \\ | 为占位符再split",
+        "验证方法: 解析后检查每行列数是否=16"
+      ],
+      "mtm_episodes": ["gen_excel_v2.py修复\\|转义管道符问题"]
+    }
+  }
+}

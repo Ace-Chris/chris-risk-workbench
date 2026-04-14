@@ -279,10 +279,84 @@
       "target_skills": ["debugger"]
     }
   },
+    "feature_engineering_field_verification": {
+      "id": "pat-2026-04-14-001",
+      "name": "Feature Engineering Field Verification",
+      "source": "project_retrospective",
+      "confidence": 0.99,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "feature_engineering",
+      "pattern": "Before designing any feature, verify the referenced field actually exists in the raw data via df.columns cross-check",
+      "problem": "Referencing non-existent fields causes runtime errors in all downstream features. SMS fields, incomplete time windows (1m/3m/6m), and subtle name variations (anum vs bnum) were all caught late.",
+      "prevention": [
+        "Phase 0 mandatory: set(all_referenced_fields) - set(df.columns) must be empty",
+        "Check each domain for which time windows (1m/3m/6m) actually exist",
+        "Field name details (recv/received, bnum/anum) must match CSV exactly"
+      ],
+      "quality_rules": [
+        "Cross-check all referenced fields against actual CSV columns",
+        "Document which fields have 1m/3m/6m versions and which don't",
+        "Use L0 feature_name column as single source of truth for downstream references"
+      ],
+      "target_skills": ["feature-engineering"]
+    },
+    "feature_engineering_denominator_guard": {
+      "id": "pat-2026-04-14-002",
+      "name": "Feature Engineering Denominator Zero Guard",
+      "source": "project_retrospective",
+      "confidence": 0.98,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "feature_engineering",
+      "pattern": "Every ratio/average feature must have explicit denominator=0 handling in pseudo_code",
+      "problem": "amt/qty features produce inf/nan when qty=0, crashing model training",
+      "prevention": [
+        "Standard template: np.where(df['denom']>0, numerator/denom, fallback)",
+        "Don't use +0.01 hack — it changes semantics (threshold becomes 0.03 when qty=0)",
+        "Guard conditions for flag features: check denominator>0 before comparison"
+      ],
+      "target_skills": ["feature-engineering"]
+    },
+    "feature_engineering_naming_contract": {
+      "id": "pat-2026-04-14-003",
+      "name": "Feature Engineering Naming Contract",
+      "source": "project_retrospective",
+      "confidence": 0.95,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "feature_engineering",
+      "pattern": "Establish abbreviation mapping table before design starts, grep-verify after each domain",
+      "problem": "33 naming inconsistencies across MTN project (bill vs bill_pay, received vs recv)",
+      "prevention": [
+        "Write abbreviation mapping in spec doc before any feature design",
+        "After each domain, grep for all possible variant spellings",
+        "Feature names in pseudo_code must match input_fields column exactly"
+      ],
+      "target_skills": ["feature-engineering"]
+    },
+    "feature_engineering_archive_after_project": {
+      "id": "pat-2026-04-14-004",
+      "name": "Feature Engineering Project Archive",
+      "source": "project_retrospective",
+      "confidence": 0.90,
+      "applications": 1,
+      "created": "2026-04-14",
+      "category": "feature_engineering",
+      "pattern": "After each feature engineering project, archive dimension system, error log, and design decisions for future projects",
+      "problem": "Lessons from one project die with that project, causing repeated mistakes",
+      "prevention": [
+        "Write project archive to memory/project-archives/",
+        "Extract abstract patterns to memory/semantic-patterns.json",
+        "Update dimension templates if new blind spots discovered"
+      ],
+      "target_skills": ["feature-engineering"]
+    }
+  },
   "meta": {
-    "version": "1.0.0",
-    "last_updated": "2025-01-12",
-    "total_patterns": 10,
-    "categories": ["prd_structure", "prd_quality", "react_patterns", "async_patterns", "ui_patterns", "architecture", "development", "debugging"]
+    "version": "1.1.0",
+    "last_updated": "2026-04-14",
+    "total_patterns": 14,
+    "categories": ["prd_structure", "prd_quality", "react_patterns", "async_patterns", "ui_patterns", "architecture", "development", "debugging", "feature_engineering"]
   }
 }
