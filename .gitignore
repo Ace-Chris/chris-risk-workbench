@@ -9,3 +9,7 @@ chris-risk-workbench/
 .codebuddy/
 .kiro/
 .trae/
+
+# Memory文件夹含项目数据，不上传（隐私保护）
+skills/feature-engineering/memory/
+.agents/skills/feature-engineering/memory/
