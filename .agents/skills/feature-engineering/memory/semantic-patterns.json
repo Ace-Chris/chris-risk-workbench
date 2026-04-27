@@ -1,8 +1,8 @@
 {
   "meta": {
-    "version": "1.0.0",
-    "last_updated": "2026-04-14",
-    "total_patterns": 10,
+    "version": "1.1.0",
+    "last_updated": "2026-04-27",
+    "total_patterns": 16,
     "source_project": "MTN_MoMo_Advance_V1",
     "categories": [
       "data_validation",
@@ -11,7 +11,9 @@
       "boundary_condition",
       "design_logic",
       "cross_layer_integrity",
-      "documentation"
+      "documentation",
+      "sentinel_safety",
+      "aggregation_engineering"
     ]
   },
   "patterns": {
@@ -200,6 +202,117 @@
         "验证方法: 解析后检查每行列数是否=16"
       ],
       "mtm_episodes": ["gen_excel_v2.py修复\\|转义管道符问题"]
+    },
+    "clip_trap_sentinel_clipping": {
+      "id": "fe-pat-011",
+      "name": "clip陷阱：哨兵值被截断",
+      "severity": "P0",
+      "source_projects": ["2026-04_MTN_TLD"],
+      "confidence": 0.99,
+      "applications": 1,
+      "created": "2026-04-27",
+      "category": "sentinel_safety",
+      "pattern": "reindex(fill_value=-999) 或 np.where(cond,-999,x) 后紧跟 .clip(lower,upper) 时，若 lower > -999，哨兵值会被截断。这是最隐蔽的系统性BUG。",
+      "problem": "MTN TLD项目中发生60处。典型：np.where(debit>0, credit/debit, -999).clip(0,100) 把-999截断为0。无数据用户和'覆盖率=0的用户'无法区分。",
+      "prevention": [
+        "核心原则：先clip再填哨兵值。顺序：(expr).clip(lo,hi).fillna(-999) 或 np.where(cond, -999, expr.clip(lo,hi))",
+        "dict-loop模式：dict内部用np.nan表示缺失，最终 pd.Series(dict).reindex(users).clip(lo,hi).fillna(-999)",
+        "每个Task完成后用脚本扫描：搜索 fill_value=-999.*clip( 且 clip下界 > -999 的行",
+        "建立safe_ratio helper函数封装哨兵值逻辑，避免裸用np.where+clip"
+      ],
+      "mtm_episodes": ["Task 6新增7处+已有代码47处=60处clip陷阱，最终审查批量修复"]
+    },
+    "pandas_std_single_record_nan": {
+      "id": "fe-pat-012",
+      "name": "pandas .std()单记录返回NaN",
+      "severity": "P1",
+      "source_projects": ["2026-04_MTN_TLD"],
+      "confidence": 0.98,
+      "applications": 1,
+      "created": "2026-04-27",
+      "category": "boundary_condition",
+      "pattern": "pandas .std(ddof=1)（默认）对只有1条数据的组返回NaN，而不是0。这在groupby后的std聚合中普遍存在。",
+      "problem": "std特征只有1笔交易的用户得到NaN，然后fillna时可能被误填为0（实际应为-999表示'数据不足'）或直接保留NaN。",
+      "prevention": [
+        "std特征后必须跟 .fillna(-999) 或 .reindex(users, fill_value=-999).fillna(-999)",
+        "diff()也有类似问题：首行diff产生NaN，后续std(mean等需要先dropna",
+        "考虑在std前检查count>=2，不满足直接赋哨兵值"
+      ],
+      "mtm_episodes": ["credit_std/debit_std在单记录用户上产生NaN，需双重fillna保护"]
+    },
+    "reindex_fillvalue_no_replace_nan": {
+      "id": "fe-pat-013",
+      "name": "reindex(fill_value=x)不替换已有NaN",
+      "severity": "P1",
+      "source_projects": ["2026-04_MTN_TLD"],
+      "confidence": 0.97,
+      "applications": 1,
+      "created": "2026-04-27",
+      "category": "null_handling",
+      "pattern": "Series.reindex(index, fill_value=x) 只对'不在原Series中的key'填x，不替换原Series中已有的NaN。需要额外加 .fillna(x)。",
+      "problem": "groupby后某些用户有NaN（如std=NaN），reindex(fill_value=-999)不会替换这些NaN，导致最终特征矩阵有NaN残留。",
+      "prevention": [
+        "reindex(fill_value=-999) 后一律加 .fillna(-999)",
+        "或者先用 .dropna() 清理groupby结果，再reindex",
+        "自动化检查：assert result.isna().sum().sum() == 0"
+      ],
+      "mtm_episodes": ["多处groupby+reindex组合需要双重fillna保护"]
+    },
+    "flag_window_metric_cartesian_explosion": {
+      "id": "fe-pat-014",
+      "name": "Flag×Window×Metric三维笛卡尔积膨胀控制",
+      "severity": "P1",
+      "source_projects": ["2026-04_MTN_TLD"],
+      "confidence": 0.95,
+      "applications": 1,
+      "created": "2026-04-27",
+      "category": "design_logic",
+      "pattern": "31个flag × 8个窗口 × 2个指标(cnt+amt) = 496个基础组合。不加控制的笛卡尔积导致特征爆炸、高度冗余。必须基于频率×价值分级。",
+      "problem": "如果31个flag全部×8个窗口×cnt/amt = 496个，加上mean/std等派生，轻松超过1000。demo数据中60d/90d/180d几乎完全线性相关。",
+      "prevention": [
+        "HIGH(高频高价值)×8窗口、MID(中频)×5窗口、LOW(稀疏高风险)×2窗口",
+        "稀疏事件(loan_repay/loan_debt等)只保留长期窗口(90d/full)",
+        "数据覆盖<窗口长度时标注≈full，避免信息冗余"
+      ],
+      "mtm_episodes": ["708特征中L1占526个，大部分来自flag×window×metric笛卡尔积"]
+    },
+    "bincount_precomputation_paradigm": {
+      "id": "fe-pat-015",
+      "name": "bincount预计算替代多次groupby",
+      "severity": "P2",
+      "source_projects": ["2026-04_MTN_TLD"],
+      "confidence": 0.95,
+      "applications": 1,
+      "created": "2026-04-27",
+      "category": "aggregation_engineering",
+      "pattern": "当需要计算多维度(flag × window)的cnt/amt聚合时，用np.bincount预计算一次，替代N次独立的groupby+filter_window。复杂度从O(N×n×users)降到O(n)。",
+      "problem": "31个flag × 8个窗口 = 248次独立groupby，每次~17ms，总计4.2秒/批。bincount预计算后<50ms。",
+      "prevention": [
+        "预计算结构：_fa[flag][window] = (cnt_array, amt_sum_array)",
+        "用numpy codes = df['msisdn'].astype('category').cat.codes 做用户编号映射",
+        "辅助函数：_fcnt(flag, w=None) 和 _famt(flag, w=None) 从_fa取值",
+        "此模式适用于任何'多维度布尔过滤+聚合'场景"
+      ],
+      "mtm_episodes": ["_fa bincount使L1层从理论4.2秒降到<50ms"]
+    },
+    "user_dfs_dict_loop_vs_groupby_apply": {
+      "id": "fe-pat-016",
+      "name": "user_dfs字典预拆分替代groupby.apply",
+      "severity": "P2",
+      "source_projects": ["2026-04_MTN_TLD"],
+      "confidence": 0.93,
+      "applications": 1,
+      "created": "2026-04-27",
+      "category": "aggregation_engineering",
+      "pattern": "对需要逐用户计算复杂逻辑(OLS/熵/FFT)的场景，预拆分为user_dfs字典，用for循环替代groupby.apply，消除groupby.apply的~17ms/次开销。",
+      "problem": "groupby.apply有固定的17ms/组开销（调用Python函数的序列化成本），69处调用合计1.17秒。dict loop ~3ms/次，合计0.2秒。",
+      "prevention": [
+        "在compute_features入口处：user_dfs = {uid: df[df['msisdn']==uid] for uid in users}",
+        "传递user_dfs给L1/L2/L3函数作为参数",
+        "代码中标注 # PERF2 注释便于识别优化点",
+        "filter_window也可利用预计算的_dte列避免重复map()"
+      ],
+      "mtm_episodes": ["30+处PERF2优化，总计节省约1秒/批"]
     }
   }
 }
