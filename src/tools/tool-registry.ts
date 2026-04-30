@@ -1,15 +1,12 @@
 import { tool } from "@opencode-ai/plugin"
 import { z } from "zod"
 import type { Managers } from "../create-managers.js"
-import type { ChrisRiskWorkbenchConfig } from "../config/schema.js"
 import { createTaskStatusTool } from "../hooks/task-lifecycle.js"
 import { log } from '../shared/logger.js'
 
 export function createToolRegistry(
   managers: Managers,
-  _config: ChrisRiskWorkbenchConfig,
 ): Record<string, ReturnType<typeof tool>> {
-  // Note: config is used in other tool registrations but not in this specific set
   // Chris-specific tools
   const frameworkQueryTool = {
     framework_query: tool({
@@ -30,43 +27,6 @@ export function createToolRegistry(
             .join("\n")
           return `可用框架知识库:\n${list}`
         }
-      },
-    }),
-  }
-
-  const debateQueryTool = {
-    debate_query: tool({
-      description: "查询辩论历史记录，查看过去的辩论过程和结果",
-      args: {
-        limit: z.number().min(1).max(50).optional().default(10).describe("返回最近的辩论条数"),
-      },
-      execute: async (args) => {
-        const history = managers.debate.getHistory()
-        if (history.length === 0) {
-          return "暂无辩论历史"
-        }
-        const recent = history.slice(-args.limit)
-        return recent
-          .map(
-            (d, i) =>
-              `${history.length - i}. ${d.speaker}: ${d.content}\n` +
-              `  第 ${d.round} 轮\n` +
-              `  时间: ${new Date().toLocaleString()}\n` // Simplified - would need timestamp storage
-          )
-          .join("\n")
-      },
-    }),
-  }
-
-  const modeSwitchTool = {
-    mode_switch: tool({
-      description: "切换工作模式（数据分析、特征工程、策略设计）",
-      args: {
-        mode: z.enum(["data-analysis", "feature-engineering", "strategy-design"]).describe("目标工作模式"),
-      },
-      execute: async (args) => {
-        // Mode switching is handled by the mode-detector hook, this tool is just for explicit setting
-        return `工作模式切换请求已提交: ${args.mode}。实际模式由目录结构和配置共同决定。`
       },
     }),
   }
@@ -97,8 +57,6 @@ export function createToolRegistry(
 
   const tools = {
     ...frameworkQueryTool,
-    ...debateQueryTool,
-    ...modeSwitchTool,
     ...evolveTool,
     ...taskStatusTool,
   }

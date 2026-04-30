@@ -164,8 +164,6 @@ chris-risk-workbench/
 | 工具名 | 用途 | 实现状态 |
 |---|---|---|
 | `framework_query` | 查询风控框架知识库（`frameworks/` 目录） | ✅ 已实现 |
-| `debate_query` | 查询辩论历史记录 | ✅ 已实现 |
-| `mode_switch` | 切换工作模式（数据分析/特征工程/策略设计） | ⚙️ 提示型（实际由目录结构决定） |
 | `evolve` | 对已完成工作进行进化式改进建议 | ✅ 派发给进化师执行 |
 | `task_status` | 查看子 Agent 任务状态（运行中/已完成/超时/失败） | ✅ 已实现 |
 
@@ -175,7 +173,7 @@ chris-risk-workbench/
 // src/tools/tool-registry.ts
 import { tool } from "@opencode-ai/plugin"
 
-export function createToolRegistry(managers, config) {
+export function createToolRegistry(managers) {
   return {
     framework_query: tool({
       description: "查询框架知识库",
@@ -184,8 +182,6 @@ export function createToolRegistry(managers, config) {
         // 查询 managers.framework
       },
     }),
-    debate_query: tool({ ... }),
-    mode_switch: tool({ ... }),
     evolve: tool({ ... }),
     task_status: tool({ ... }),  // 来自 task-lifecycle.ts
   }
@@ -300,7 +296,6 @@ event hook → 检测 session.created 事件
 |---|---|---|---|
 | `FrameworkManager` | 管理风控框架知识库 | `frameworks/` 目录（递归加载 .txt） | `getFramework()`, `getAllSummaries()`, `searchFrameworks()` |
 | `ExperienceManager` | 管理跨项目经验 | `experiences/` 目录（递归加载 .md） | `getExperience()`, `getAllSummaries()`, `searchExperiences()` |
-| `DebateManager` | 管理辩论流程 | 内存（会话级） | `startDebate()`, `addPoint()`, `nextRound()`, `getSummary()` |
 
 ---
 
@@ -363,10 +358,6 @@ chris-risk-workbench/          用户的项目/
   "disabled_agents": ["视觉员"],           // 禁用某个 agent
   "skills_path": "./my-custom-skills",     // 自定义 skill 目录
   "frameworks_path": "./my-frameworks",    // 自定义框架目录
-  "debate": {
-    "auto_trigger": true,                  // 自动触发辩论
-    "max_rounds": 3                        // 最大辩论轮数
-  },
   "agents": {
     "分析师": {
       "model": "glm-5.1",                 // 覆盖模型
@@ -487,7 +478,7 @@ chris-risk-workbench/
 ├── src/
 │   ├── index.ts                    # 插件入口（Plugin 函数）
 │   ├── plugin-interface.ts         # 创建 Hooks 接口（config handler 注册 agent）
-│   ├── create-managers.ts          # 创建 FrameworkManager + ExperienceManager + DebateManager
+│   ├── create-managers.ts          # 创建 FrameworkManager + ExperienceManager
 │   ├── config/
 │   │   └── schema.ts               # 配置定义 + loadPluginConfig()
 │   ├── agents/
@@ -550,7 +541,7 @@ OpenCode 启动 → 加载 dist/index.js
 ├─ createBuiltinAgents(config, skillLoader)
 │   → 创建 9 个 agent
 │   → injectSkills() 注入 skill 内容到 agent.instructions
-├─ createToolRegistry(managers, config) → 注册 5 个工具
+├─ createToolRegistry(managers) → 注册 3 个工具
 ├─ createHooks(config, managers, ctx.directory, pluginRoot)
 │   → event: 工作模式检测
 │   → chat.message: 运行时 fallback

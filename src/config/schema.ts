@@ -44,15 +44,6 @@ export const AgentOverrideSchema = z.object({
 
 export type AgentOverride = z.infer<typeof AgentOverrideSchema>
 
-// === Debate Config Schema ===
-
-export const DebateConfigSchema = z.object({
-  max_rounds: z.number().optional().default(3),
-  participants: z.array(z.string()).optional(),
-})
-
-export type DebateConfig = z.infer<typeof DebateConfigSchema>
-
 // === Root Config Schema ===
 
 export const ChrisRiskWorkbenchConfigSchema = z.object({
@@ -61,7 +52,6 @@ export const ChrisRiskWorkbenchConfigSchema = z.object({
   disabled_tools: z.array(z.string()).optional(),
   disabled_agents: z.array(z.string()).optional(),
   frameworks_path: z.string().optional(),
-  debate: DebateConfigSchema.optional(),
   skills_path: z.string().optional(),
   /** Global fallback model chain — tried in order when the primary model fails */
   fallback_models: z.array(z.string()).optional(),
@@ -73,10 +63,6 @@ export type ChrisRiskWorkbenchConfig = z.infer<typeof ChrisRiskWorkbenchConfigSc
 
 export const DEFAULT_CONFIG: ChrisRiskWorkbenchConfig = {
   mode: "all",
-  debate: {
-    max_rounds: 3,
-    participants: ["质疑员"],
-  },
 }
 
 // === Config Loading ===

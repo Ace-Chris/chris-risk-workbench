@@ -2,7 +2,7 @@ import { existsSync } from "fs"
 import { join } from "path"
 import { log } from "./shared/logger.js"
 import { loadTextFilesFromDir, loadMarkdownFilesFromDir, resolveFrameworksPath } from "./shared/utils.js"
-import type { ChrisRiskWorkbenchConfig, DebateConfig } from "./config/schema.js"
+import type { ChrisRiskWorkbenchConfig } from "./config/schema.js"
 
 // === FrameworkManager ===
 export class FrameworkManager {
@@ -86,47 +86,16 @@ export class ExperienceManager {
     return result
   }
 }
-// === DebateManager ===
-export class DebateManager {
-  private currentRound = 0
-  private history: Array<{ round: number; speaker: string; content: string }> = []
-  private config: DebateConfig
-  constructor(config: DebateConfig) {
-    this.config = config
-  }
-  startDebate(): void {
-    this.currentRound = 0
-    this.history = []
-  }
-  addPoint(speaker: string, content: string): void {
-    this.history.push({ round: this.currentRound, speaker, content })
-  }
-  nextRound(): boolean {
-    this.currentRound++
-    return this.currentRound <= (this.config.max_rounds ?? 3)
-  }
-  isFinished(): boolean {
-    return this.currentRound > (this.config.max_rounds ?? 3)
-  }
-  getHistory(): typeof this.history {
-    return this.history
-  }
-  getSummary(): string {
-    return this.history.map((h) => `[Round ${h.round}] ${h.speaker}: ${h.content}`).join("\n")
-  }
-}
 // === Managers Export ===
 export type Managers = {
   framework: FrameworkManager
   experience: ExperienceManager
-  debate: DebateManager
 }
 export function createManagers(config: ChrisRiskWorkbenchConfig, pluginDir: string): Managers {
   const frameworksPath = resolveFrameworksPath(pluginDir, config.frameworks_path)
   const framework = new FrameworkManager(frameworksPath)
   const experiencesPath = join(pluginDir, "experiences")
   const experience = new ExperienceManager(experiencesPath)
-  const debate = new DebateManager(config.debate ?? { max_rounds: 3 })
   log.info("Managers initialized")
-  return { framework, experience, debate }
+  return { framework, experience }
 }

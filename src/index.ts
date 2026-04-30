@@ -3,7 +3,7 @@
  *
  * Initializes the multi-agent credit risk workbench:
  *  1. Loads config from user project directory (ctx.directory)
- *  2. Creates managers (Framework, Debate) using plugin's own root
+ *  2. Creates managers (Framework, Experience) using plugin's own root
  *  3. Loads skills from both plugin-bundled and user project directories
  *  4. Creates agents with skill injection
  *  5. Registers tools and hooks
@@ -58,7 +58,7 @@ const ChrisRiskWorkbenchPlugin: Plugin = async (ctx) => {
   const agents = createBuiltinAgents(config, skillLoader)
   log.info("Agents created")
 
-  const tools = createToolRegistry(managers, config)
+  const tools = createToolRegistry(managers)
   log.info("Tools created")
 
   // Mode detection uses user's project directory (data/, features/, strategy/)
