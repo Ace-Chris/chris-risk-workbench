@@ -39,13 +39,13 @@
 |---|---|---|---|---|
 | chris | 主编 | **primary** | 任务调度与综合 | find-skills |
 | 分析师 | 分析师 | subagent | 数据分析、统计、可视化 | xlsx, data-analysis |
-| 质疑员 | 质疑员 | subagent | 逻辑审查、辩论挑战 | critical-thinking-logical-reasoning |
+| 质疑员 | 质疑员 | subagent | 闸门审查、辩论挑战 | critical-thinking-logical-reasoning, debate-review |
 | 工程师 | 工程师 | subagent | 特征工程、代码生成 | Feature Engineering |
-| 研究员 | 研究员 | subagent | 深度搜索、知识综合 | parallel-deep-research, hv-analysis, browser-use |
+| 研究员 | 研究员 | subagent | 深度搜索、知识综合 | parallel-deep-research, hv-analysis, browser-use, agent-browser |
 | 跨界顾问 | 跨界顾问 | subagent | 跨领域创意、方案生成 | creative-problem-solver |
 | 框架师 | 框架师 | subagent | 方法论梳理、流程标准化 | methodology-curator |
 | 进化师 | 进化师 | subagent | 自我评估、系统改进、知识同步 | self-improving-agent, agent-evaluation, neat-freak |
-| 视觉员 | 视觉员 | subagent | 图片分析、图表生成 | ai-image-generation |
+| 视觉员 | 视觉员 | subagent | 图片分析、图表生成 | ai-image-generation, pdf |
 
 ### 2.2 Agent 配置结构
 
@@ -506,7 +506,6 @@ chris-risk-workbench/
 │   │   ├── create-hooks.ts         # 创建所有 hook（串联 tool.execute.after）
 │   │   ├── context-injector.ts     # system.transform hook（注入上下文 + 插件目录）
 │   │   ├── mode-detector.ts        # event hook（自动检测工作模式）
-│   │   ├── debate-coordinator.ts   # tool.execute.after hook（辩论协调）
 │   │   ├── task-lifecycle.ts       # tool.execute.after hook（任务追踪）
 │   │   └── runtime-fallback.ts     # chat.message + tool hook（模型 fallback）
 │   ├── tools/

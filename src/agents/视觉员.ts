@@ -35,7 +35,7 @@ export const createLookerAgent: AgentFactory = (model: string) => ({
   mode: "subagent" as const,
   fallback_models: [],
   maxSteps: 20,
-  tools: { task: false, read: true, write: false, grep: false, look_at: true, skill_mcp: true },
+  tools: { task: false, read: true, write: false, grep: false, look_at: true, skill_mcp: true, skill: true },
   description: "视觉员 - 多模态数据分析",
   color: "#3498DB",
   skills: ["ai-image-generation", "pdf"],

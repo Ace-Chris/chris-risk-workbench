@@ -63,9 +63,9 @@ export const AGENT_MODEL_MAP: Record<string, ModelConfig> = {
       fallback: "",
       mode: "subagent",
     },
- "视觉员": {
-   model: "",
-   fallback: "",
-   mode: "subagent",
- },
+  "视觉员": {
+    model: "opencode/glm-5v",
+    fallback: "jsai/MiniMax-M2.7-highspeed",
+    mode: "subagent",
+  },
 }

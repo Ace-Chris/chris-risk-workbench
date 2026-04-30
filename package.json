@@ -13,7 +13,9 @@
   },
   "files": [
     "dist/",
-    "frameworks/"
+    "frameworks/",
+    "skills/",
+    "experiences/"
   ],
   "scripts": {
     "build": "tsc",

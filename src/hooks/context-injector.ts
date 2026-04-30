@@ -138,24 +138,30 @@ export function createSystemTransformHook(
     }
     const scan = cachedScan
 
-    // Framework summaries
+    // Framework summaries (capped at 20)
     const frameworkSummaries = managers.framework.getAllSummaries()
     let frameworkBlock = ""
     if (frameworkSummaries.size > 0) {
+      const fwEntries = Array.from(frameworkSummaries.entries())
+      const fwMax = 20
       frameworkBlock = "\n## 可用框架知识库\n"
-      for (const [name, summary] of frameworkSummaries) {
-        frameworkBlock += "- " + name + ": " + truncate(summary, 80) + "\n"
+      for (let i = 0; i < Math.min(fwEntries.length, fwMax); i++) {
+        frameworkBlock += "- " + fwEntries[i][0] + ": " + truncate(fwEntries[i][1], 80) + "\n"
       }
+      if (fwEntries.length > fwMax) frameworkBlock += `- ...及其他 ${fwEntries.length - fwMax} 个框架\n`
     }
 
-    // Cross-project experience summaries
+    // Cross-project experience summaries (capped at 20)
     const experienceSummaries = managers.experience.getAllSummaries()
     let experienceBlock = ""
     if (experienceSummaries.size > 0) {
+      const expEntries = Array.from(experienceSummaries.entries())
+      const expMax = 20
       experienceBlock = "\n## 跨项目经验库（可借鉴）\n"
-      for (const [name, summary] of experienceSummaries) {
-        experienceBlock += "- " + name + ": " + truncate(summary, 100) + "\n"
+      for (let i = 0; i < Math.min(expEntries.length, expMax); i++) {
+        experienceBlock += "- " + expEntries[i][0] + ": " + truncate(expEntries[i][1], 100) + "\n"
       }
+      if (expEntries.length > expMax) experienceBlock += `- ...及其他 ${expEntries.length - expMax} 条经验\n`
     }
 
     // Project data context
