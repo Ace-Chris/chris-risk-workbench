@@ -47,7 +47,6 @@ export type AgentOverride = z.infer<typeof AgentOverrideSchema>
 // === Debate Config Schema ===
 
 export const DebateConfigSchema = z.object({
-  auto_trigger: z.boolean().optional().default(true),
   max_rounds: z.number().optional().default(3),
   participants: z.array(z.string()).optional(),
 })
@@ -75,9 +74,8 @@ export type ChrisRiskWorkbenchConfig = z.infer<typeof ChrisRiskWorkbenchConfigSc
 export const DEFAULT_CONFIG: ChrisRiskWorkbenchConfig = {
   mode: "all",
   debate: {
-    auto_trigger: true,
     max_rounds: 3,
-    participants: ["分析师", "质疑员", "跨界顾问"],
+    participants: ["质疑员"],
   },
 }
 

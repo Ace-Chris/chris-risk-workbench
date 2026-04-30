@@ -2,7 +2,6 @@ import type { Hooks } from "@opencode-ai/plugin"
 import type { ChrisRiskWorkbenchConfig } from "../config/schema.js"
 import type { Managers } from "../create-managers.js"
 import { createEventHook } from "./mode-detector.js"
-import { createToolExecuteAfterHook as createDebateAfterHook } from "./debate-coordinator.js"
 import { createSystemTransformHook } from "./context-injector.js"
 import { createRuntimeFallbackHook, createRuntimeFallbackToolHook } from "./runtime-fallback.js"
 import { createTaskLifecycleHook } from "./task-lifecycle.js"
@@ -31,13 +30,11 @@ export function createHooks(
   const fallbackChatHook = createRuntimeFallbackHook(config)
   hooks["chat.message"] = fallbackChatHook
 
-  // 3. Tool execute after — debate coordinator + runtime fallback + task lifecycle
-  const debateAfterHook = createDebateAfterHook(managers.debate)
+  // 3. Tool execute after — runtime fallback + task lifecycle
   const fallbackToolHook = createRuntimeFallbackToolHook(config)
   const taskLifecycleHook = createTaskLifecycleHook()
   // Chain all tool.execute.after hooks
   hooks["tool.execute.after"] = async (input, output) => {
-    await debateAfterHook(input, output)
     await fallbackToolHook(input, output)
     await taskLifecycleHook(input, output)
   }

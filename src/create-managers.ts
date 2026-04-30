@@ -126,7 +126,7 @@ export function createManagers(config: ChrisRiskWorkbenchConfig, pluginDir: stri
   const framework = new FrameworkManager(frameworksPath)
   const experiencesPath = join(pluginDir, "experiences")
   const experience = new ExperienceManager(experiencesPath)
-  const debate = new DebateManager(config.debate ?? { auto_trigger: true, max_rounds: 3 })
+  const debate = new DebateManager(config.debate ?? { max_rounds: 3 })
   log.info("Managers initialized")
   return { framework, experience, debate }
 }
