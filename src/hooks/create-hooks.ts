@@ -19,6 +19,7 @@ export function createHooks(
   config: ChrisRiskWorkbenchConfig,
   managers: Managers,
   directory: string,
+  pluginDir: string,
 ): CreatedHooks {
   const hooks: CreatedHooks = {}
 
@@ -42,7 +43,7 @@ export function createHooks(
   }
 
   // 4. System transform — enhanced context injection
-  const systemTransformHook = createSystemTransformHook(config, managers, directory)
+  const systemTransformHook = createSystemTransformHook(config, managers, directory, pluginDir)
   if (systemTransformHook) hooks["experimental.chat.system.transform"] = systemTransformHook
 
   log.info("Registered " + Object.keys(hooks).length + " hooks (event, chat.message, tool.execute.after, system.transform)")

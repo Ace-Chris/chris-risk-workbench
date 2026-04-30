@@ -84,14 +84,11 @@ export function createToolRegistry(
           .describe("改进方面"),
       },
       execute: async (args) => {
-        // Simple placeholder - in real implementation this would connect to evolver agent
+        // Delegate to evolver agent — return instruction for Chris to dispatch
         const aspectText = args.aspect ? `（${args.aspect}方面）` : ""
-        return `针对 "${args.target}"${aspectText} 的进化建议：\n` +
-          "1. 考虑引入更鲁棒的验证方法\n" +
-          "2. 增加边界情况测试\n" +
-          "3. 文档化假设和局限性\n" +
-          "4. 对比基线方法的表现\n" +
-          "5. 考虑可解释性权衡"
+        return `[进化建议请求] 请将以下目标派给「进化师」进行评估：\n` +
+          `目标: "${args.target}"${aspectText}\n` +
+          `进化师会返回：整体评分、优点、不足、改进建议、可沉淀知识。`
       },
     }),
   }

@@ -8,7 +8,7 @@
  * Inspired by omo's context-injector, adapted for credit risk domain.
  */
 
-import { existsSync, readdirSync } from "fs"
+import { existsSync, readdirSync, readFileSync } from "fs"
 import { join, extname } from "path"
 import type { Hooks } from "@opencode-ai/plugin"
 import type { Managers } from "../create-managers.js"
@@ -49,7 +49,7 @@ function scanProjectDirectory(directory: string): ProjectScanResult {
     const readmePath = join(directory, name)
     if (existsSync(readmePath)) {
       try {
-        const content = require("fs").readFileSync(readmePath, "utf-8")
+        const content = readFileSync(readmePath, "utf-8")
         result.readmePreview = content.slice(0, 500)
         break
       } catch { /* ignore */ }
@@ -60,7 +60,7 @@ function scanProjectDirectory(directory: string): ProjectScanResult {
   const knowledgePath = join(directory, ".chris-risk", "knowledge.md")
   if (existsSync(knowledgePath)) {
     try {
-      const content = require("fs").readFileSync(knowledgePath, "utf-8")
+      const content = readFileSync(knowledgePath, "utf-8")
       result.projectKnowledge = truncate(content, 2000)
     } catch { /* ignore */ }
   }
@@ -69,7 +69,7 @@ function scanProjectDirectory(directory: string): ProjectScanResult {
   const decisionsPath = join(directory, ".chris-risk", "decisions.md")
   if (existsSync(decisionsPath)) {
     try {
-      const content = require("fs").readFileSync(decisionsPath, "utf-8")
+      const content = readFileSync(decisionsPath, "utf-8")
       result.projectDecisions = truncate(content, 1000)
     } catch { /* ignore */ }
   }
@@ -122,6 +122,7 @@ export function createSystemTransformHook(
   config: ChrisRiskWorkbenchConfig,
   managers: Managers,
   directory: string,
+  pluginDir: string,
 ): NonNullable<Hooks["experimental.chat.system.transform"]> {
   const mode = getWorkMode(config)
   const modeLabel = WORK_MODE_LABELS[mode]
@@ -194,6 +195,7 @@ export function createSystemTransformHook(
       "## 当前工作上下文",
       "- 工作模式: " + modeLabel,
       "- 当前项目目录: " + directory,
+      "- 框架插件目录: " + pluginDir,
       "- 可用Agent: chris(主编), 分析师, 质疑员, 工程师, 研究员, 跨界顾问, 框架师, 进化师, 视觉员",
       projectBlock,
       readmeBlock,

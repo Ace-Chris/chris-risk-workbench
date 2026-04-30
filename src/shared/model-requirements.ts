@@ -69,19 +69,3 @@ export const AGENT_MODEL_MAP: Record<string, ModelConfig> = {
    mode: "subagent",
  },
 }
-
-/** Get model for an agent, with optional user override */
-export function resolveAgentModel(
-   agentName: string,
-   userOverride?: string,
-): { model: string | undefined; fallback: string | undefined; temperature?: number } {
-   const base = AGENT_MODEL_MAP[agentName]
-   if (!base) {
-     return { model: userOverride ?? undefined, fallback: undefined }
-   }
-   return {
-     model: userOverride ?? base.model,
-     fallback: base.fallback,
-     temperature: base.temperature,
-   }
-}

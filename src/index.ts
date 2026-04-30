@@ -62,7 +62,7 @@ const ChrisRiskWorkbenchPlugin: Plugin = async (ctx) => {
   log.info("Tools created")
 
   // Mode detection uses user's project directory (data/, features/, strategy/)
-  const hooks = createHooks(config, managers, ctx.directory)
+  const hooks = createHooks(config, managers, ctx.directory, pluginRoot)
   log.info("Hooks created")
 
   const iface = createPluginInterface({ config, agents, tools, hooks, managers })

@@ -1,6 +1,6 @@
 {
   "name": "chris-risk-workbench",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "信贷风控工作台 OpenCode 插件 — 多Agent协作的数据分析、特征衍生、策略制定",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -81,7 +81,7 @@ export function createTaskStatusTool() {
 
           output += `${statusIcon} [${task.agent}] ${task.description.slice(0, 40)} (${elapsed}秒) - ${task.status}\n`
           if (task.output && task.status !== "running") {
-            output += `   输出: ${task.output.slice(0, 100)}\n`
+            output += `   输出: ${task.output.slice(0, 300)}\n`
           }
         }
 
@@ -108,16 +108,61 @@ export function createTaskLifecycleHook(): NonNullable<Hooks["tool.execute.after
     if (input.tool !== "task") return
 
     const outputText = output.output ?? ""
-    const sessionID = input.sessionID
 
-    // Detect task start
-    if (outputText.includes("task_id") || outputText.includes("Background task")) {
+    // Detect task start — look for task_id or background task indicators
+    const taskStartMatch = outputText.match(/task_id[=:]\s*["']?([a-zA-Z0-9_-]+)/i)
+      ?? outputText.match(/Background task.*?(\w+)/i)
+
+    if (taskStartMatch) {
       cleanupStaleTasks()
+      const taskId = taskStartMatch[1]
+      // Try to extract agent name from the task call input or output
+      const agentMatch = outputText.match(/(?:agent|派给|调度)[：:]\s*([^\s,，]+)/)
+        ?? input.args?.agentName ? [null, String(input.args.agentName)] : null
+
+      const record: TaskRecord = {
+        id: taskId,
+        agent: agentMatch?.[1] ?? "unknown",
+        description: String(input.args?.prompt ?? input.args?.description ?? "").slice(0, 80),
+        status: "running",
+        startedAt: Date.now(),
+      }
+      activeTasks.set(taskId, record)
+      log.info(`Task started: [${record.agent}] ${record.description.slice(0, 40)}`)
+      return // Start detected, don't process further
     }
 
-    // Detect task failure
-    if (outputText.includes("[ERROR]") || outputText.includes("error") || outputText.includes("Failed")) {
-      log.info(`Task failure detected in session ${sessionID}: ${outputText.slice(0, 100)}`)
+    // Detect task failure — strict patterns to avoid false positives
+    // "error" alone is too broad (matches "0 errors", "No errors found" etc.)
+    const failurePatterns = /\[ERROR\]|\bERROR:\s|Failed to execute|task.*failed|Agent.*failed|Insufficient credits|rate limit/i
+    if (failurePatterns.test(outputText)) {
+      const runningTasks = Array.from(activeTasks.values()).filter(t => t.status === "running")
+      if (runningTasks.length === 1) {
+        const task = runningTasks[0]
+        task.status = "failed"
+        task.completedAt = Date.now()
+        task.output = outputText.slice(0, 300)
+        log.info(`Task failed: [${task.agent}] ${task.description.slice(0, 40)}`)
+        return
+      } else if (runningTasks.length > 1) {
+        log.info(`Task failure detected but ${runningTasks.length} tasks running, cannot attribute: ${outputText.slice(0, 100)}`)
+        return
+      }
+    }
+
+    // Detect task completion — only if we have running tasks and substantial output
+    // This runs after start/failure checks, so it only triggers on non-start, non-failure outputs
+    if (outputText.length > 50) {
+      const runningTasks = Array.from(activeTasks.values()).filter(t => t.status === "running")
+      if (runningTasks.length === 1) {
+        const task = runningTasks[0]
+        task.status = "completed"
+        task.completedAt = Date.now()
+        task.output = outputText.slice(0, 300)
+        log.info(`Task completed: [${task.agent}] ${task.description.slice(0, 40)} (${Math.round((task.completedAt - task.startedAt) / 1000)}s)`)
+      } else if (runningTasks.length > 1) {
+        log.debug(`Task output detected but ${runningTasks.length} tasks running, cannot attribute completion`)
+      }
     }
   }
 }
