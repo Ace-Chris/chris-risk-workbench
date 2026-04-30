@@ -29,6 +29,8 @@ type ProjectScanResult = {
   docFiles: string[]
   directories: string[]
   readmePreview: string
+  projectKnowledge: string
+  projectDecisions: string
 }
 
 function scanProjectDirectory(directory: string): ProjectScanResult {
@@ -38,6 +40,8 @@ function scanProjectDirectory(directory: string): ProjectScanResult {
     docFiles: [],
     directories: [],
     readmePreview: "",
+    projectKnowledge: "",
+    projectDecisions: "",
   }
 
   // Read README if exists
@@ -50,6 +54,24 @@ function scanProjectDirectory(directory: string): ProjectScanResult {
         break
       } catch { /* ignore */ }
     }
+  }
+
+  // Read project knowledge if exists (.chris-risk/knowledge.md)
+  const knowledgePath = join(directory, ".chris-risk", "knowledge.md")
+  if (existsSync(knowledgePath)) {
+    try {
+      const content = require("fs").readFileSync(knowledgePath, "utf-8")
+      result.projectKnowledge = truncate(content, 2000)
+    } catch { /* ignore */ }
+  }
+
+  // Read project decisions if exists (.chris-risk/decisions.md)
+  const decisionsPath = join(directory, ".chris-risk", "decisions.md")
+  if (existsSync(decisionsPath)) {
+    try {
+      const content = require("fs").readFileSync(decisionsPath, "utf-8")
+      result.projectDecisions = truncate(content, 1000)
+    } catch { /* ignore */ }
   }
 
   // Scan top-level and one level deep
@@ -125,6 +147,16 @@ export function createSystemTransformHook(
       }
     }
 
+    // Cross-project experience summaries
+    const experienceSummaries = managers.experience.getAllSummaries()
+    let experienceBlock = ""
+    if (experienceSummaries.size > 0) {
+      experienceBlock = "\n## 跨项目经验库（可借鉴）\n"
+      for (const [name, summary] of experienceSummaries) {
+        experienceBlock += "- " + name + ": " + truncate(summary, 100) + "\n"
+      }
+    }
+
     // Project data context
     let projectBlock = ""
     if (scan.dataFiles.length > 0 || scan.codeFiles.length > 0 || scan.directories.length > 0) {
@@ -146,13 +178,29 @@ export function createSystemTransformHook(
       readmeBlock = "\n## 项目说明（README 摘要）\n" + truncate(scan.readmePreview, 400) + "\n"
     }
 
+    // Project knowledge (from .chris-risk/knowledge.md)
+    let knowledgeBlock = ""
+    if (scan.projectKnowledge) {
+      knowledgeBlock = "\n## 项目知识库（.chris-risk/knowledge.md）\n" + scan.projectKnowledge + "\n"
+    }
+
+    // Project decisions (from .chris-risk/decisions.md)
+    let decisionsBlock = ""
+    if (scan.projectDecisions) {
+      decisionsBlock = "\n## 项目决策日志（.chris-risk/decisions.md）\n" + scan.projectDecisions + "\n"
+    }
+
     const contextBlock = [
       "## 当前工作上下文",
       "- 工作模式: " + modeLabel,
+      "- 当前项目目录: " + directory,
       "- 可用Agent: chris(主编), 分析师, 质疑员, 工程师, 研究员, 跨界顾问, 框架师, 进化师, 视觉员",
       projectBlock,
       readmeBlock,
+      knowledgeBlock,
+      decisionsBlock,
       frameworkBlock,
+      experienceBlock,
     ].join("\n")
     output.system.push(contextBlock)
     log.debug("Injected enhanced context into system prompt")

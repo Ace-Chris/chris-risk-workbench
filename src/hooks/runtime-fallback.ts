@@ -98,9 +98,9 @@ function isModelInCooldown(model: string, state: FallbackState): boolean {
 function getFallbackModels(config: ChrisRiskWorkbenchConfig): string[] {
    const fallbacks = config.fallback_models ?? []
    if (fallbacks.length === 0) {
-     return [""]
+     return []  // No fallback configured — don't return empty string
    }
-   return fallbacks
+   return fallbacks.filter(m => m.trim().length > 0)
 }
 
 function selectNextFallback(
@@ -169,7 +169,8 @@ export function createRuntimeFallbackHook(
     // Select next fallback model
     const nextModel = selectNextFallback(state, fallbackChain)
     if (!nextModel) {
-      log.warn(`No fallback model available for session ${sessionID}`)
+      // No fallback model available — only log, don't inject noisy message
+      log.info(`No fallback model configured for session ${sessionID}, skipping retry`)
       clearState(sessionID)
       return
     }
@@ -208,6 +209,9 @@ export function createRuntimeFallbackToolHook(
     // Append fallback notice to the tool output so the agent can see it
     const fallbackChain = getFallbackModels(config)
 
-    output.output += `\n\n[系统提示] 检测到模型错误。建议 Chris 使用备选模型重试，或告知用户当前模型不可用。备选模型: ${fallbackChain.join(", ")}`
+    // Only inject notice when fallback models are actually configured
+    if (fallbackChain.length > 0) {
+      output.output += `\n\n[系统提示] 检测到模型错误。建议 Chris 使用备选模型重试，或告知用户当前模型不可用。备选模型: ${fallbackChain.join(", ")}`
+    }
   }
 }

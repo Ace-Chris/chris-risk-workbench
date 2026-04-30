@@ -33,6 +33,22 @@ export function readTextFile(filePath: string): string | null {
  * Load all .txt files from a directory as a map of filename -> content
  */
 export function loadTextFilesFromDir(dirPath: string): Map<string, string> {
+  return loadFilesFromDir(dirPath, [".txt"])
+}
+
+/**
+ * Load all .md files from a directory (recursive) as a map of path -> content.
+ * Supports sub-directories: subdir/file.md → "subdir/file"
+ */
+export function loadMarkdownFilesFromDir(dirPath: string): Map<string, string> {
+  return loadFilesFromDir(dirPath, [".md"])
+}
+
+/**
+ * Generic file loader — loads files matching given extensions from a directory recursively.
+ * Returns a map of "relative name (without ext)" → file content.
+ */
+function loadFilesFromDir(dirPath: string, extensions: string[]): Map<string, string> {
   const result = new Map<string, string>()
 
   if (!existsSync(dirPath)) {
@@ -43,14 +59,17 @@ export function loadTextFilesFromDir(dirPath: string): Map<string, string> {
   try {
     const entries = readdirSync(dirPath, { withFileTypes: true })
     for (const entry of entries) {
-      if (entry.isFile() && entry.name.endsWith(".txt")) {
+      if (entry.isFile() && extensions.some(ext => entry.name.endsWith(ext))) {
         const content = readTextFile(join(dirPath, entry.name))
         if (content) {
-          result.set(entry.name.replace(/\.txt$/, ""), content)
+          const nameWithoutExt = extensions.reduce(
+            (name, ext) => name.replace(new RegExp(`\\${ext}$`), ""), entry.name
+          )
+          result.set(nameWithoutExt, content)
         }
       } else if (entry.isDirectory()) {
         const subDir = join(dirPath, entry.name)
-        const subEntries = loadTextFilesFromDir(subDir)
+        const subEntries = loadFilesFromDir(subDir, extensions)
         for (const [name, content] of subEntries) {
           result.set(`${entry.name}/${name}`, content)
         }
